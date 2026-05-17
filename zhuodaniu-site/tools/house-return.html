@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>房屋租金回报测算器 - AlphaCather</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="主导航">
+        <a class="brand" href="../index.html">AlphaCather</a>
+        <div class="nav-links">
+          <a class="nav-link" data-nav="articles" href="../articles/index.html">文章</a>
+          <a class="nav-link" data-nav="videos" href="../videos/index.html">视频</a>
+          <a class="nav-link" data-nav="tools" href="./index.html">工具</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <p class="eyebrow">房屋租金回报测算器</p>
+        <h1>算清月供、总支出和租金回本时间。</h1>
+        <p class="lead">输入房屋总价、首付比例、贷款利率和年限。月租金可不填，也可以填 0；只有月租金大于 0 时才展示租金回报率和回本时间。</p>
+      </section>
+
+      <section class="section tool-layout" aria-label="房屋租金回报测算器">
+        <form class="form-panel" id="calculator-form" novalidate>
+          <div class="field">
+            <label for="housePriceWan">房屋总价</label>
+            <div class="input-row">
+              <input id="housePriceWan" name="housePriceWan" type="number" inputmode="decimal" min="0" step="0.01" placeholder="例如 120">
+              <span class="unit">万元</span>
+            </div>
+            <div class="error" data-error-for="housePriceWan"></div>
+          </div>
+
+          <div class="field">
+            <label for="downPaymentRate">首付比例</label>
+            <div class="input-row">
+              <input id="downPaymentRate" name="downPaymentRate" type="number" inputmode="decimal" min="0" max="100" step="0.01" placeholder="例如 30">
+              <span class="unit">%</span>
+            </div>
+            <div class="error" data-error-for="downPaymentRate"></div>
+          </div>
+
+          <div class="field">
+            <label for="annualRate">贷款年利率</label>
+            <div class="input-row">
+              <input id="annualRate" name="annualRate" type="number" inputmode="decimal" min="0" step="0.01" placeholder="例如 3.5">
+              <span class="unit">%</span>
+            </div>
+            <div class="error" data-error-for="annualRate"></div>
+          </div>
+
+          <div class="field">
+            <label for="loanYears">贷款年限</label>
+            <div class="input-row">
+              <input id="loanYears" name="loanYears" type="number" inputmode="numeric" min="1" max="30" step="1" placeholder="例如 30">
+              <span class="unit">年</span>
+            </div>
+            <div class="error" data-error-for="loanYears"></div>
+          </div>
+
+          <div class="field">
+            <label for="monthlyRent">月租金</label>
+            <div class="input-row">
+              <input id="monthlyRent" name="monthlyRent" type="number" inputmode="decimal" min="0" step="1" placeholder="可不填，或填 0">
+              <span class="unit">元/月</span>
+            </div>
+            <div class="error" data-error-for="monthlyRent"></div>
+          </div>
+
+          <button class="button" type="submit">开始测算</button>
+        </form>
+
+        <aside class="result-panel" id="result-panel" hidden>
+          <div class="result-header">
+            <h2>测算结果</h2>
+            <span class="result-note">等额本息</span>
+          </div>
+
+          <div class="result-list">
+            <div class="metric">
+              <div class="metric-label">月供</div>
+              <div class="metric-value"><output id="monthlyPayment">0</output><span>元/月</span></div>
+            </div>
+
+            <div class="metric">
+              <div class="metric-label">购房总支出</div>
+              <div class="metric-value"><output id="totalCostWan">0.00</output><span>万元</span></div>
+            </div>
+
+            <div class="metric rent-result" hidden>
+              <div class="metric-label">租金回报率</div>
+              <div class="metric-value"><output id="rentalYield">0.0</output><span>%</span></div>
+            </div>
+
+            <div class="metric rent-result" hidden>
+              <div class="metric-label">回本时间</div>
+              <div class="metric-value"><output id="paybackYears">0.0</output><span>年</span></div>
+            </div>
+          </div>
+
+          <div class="interpretation" id="interpretation" hidden></div>
+          <div class="tip" id="rent-tip">填写大于 0 的月租金后，可查看租金回报率和回本时间。</div>
+          <div class="disclaimer">测算结果为简化估算，未包含物业费、维修费、税费、空置期及房价变化。</div>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">本站内容与工具仅用于学习和估算，不构成投资建议。</div>
+    </footer>
+    <script src="../assets/common.js"></script>
+    <script src="./house-return.js"></script>
+    <script>setActiveNav("tools")</script>
+  </body>
+</html>

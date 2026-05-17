@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>工具 - AlphaCather</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="主导航">
+        <a class="brand" href="../index.html">AlphaCather</a>
+        <div class="nav-links">
+          <a class="nav-link" data-nav="articles" href="../articles/index.html">文章</a>
+          <a class="nav-link" data-nav="videos" href="../videos/index.html">视频</a>
+          <a class="nav-link" data-nav="tools" href="./index.html">工具</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <p class="eyebrow">Tools</p>
+        <h1>投资小工具</h1>
+        <p class="lead">用几个关键输入，快速估算投资、收入和现金流问题。先从房屋租金回报测算器开始。</p>
+      </section>
+
+      <section class="section" aria-labelledby="tools-title">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title" id="tools-title">工具列表</h2>
+            <p class="section-desc">可用工具会直接进入计算页面，即将上线的工具先作为规划入口。</p>
+          </div>
+        </div>
+
+        <div class="grid tool-grid">
+          <a class="card card-link" href="./house-return.html">
+            <div>
+              <span class="badge">可用</span>
+              <h2>房屋租金回报测算器</h2>
+              <p>根据总价、首付、贷款利率、年限和可选月租金，估算月供、总支出、租金回报率和回本时间。</p>
+            </div>
+            <span class="card-action">开始测算</span>
+          </a>
+
+          <div class="card muted-card">
+            <span class="badge pending">即将上线</span>
+            <h2>个人复利计算器</h2>
+            <p>用于估算个人资产在持续投入和复利增长下的长期变化。</p>
+          </div>
+
+          <div class="card muted-card">
+            <span class="badge pending">即将上线</span>
+            <h2>投资复利计算器</h2>
+            <p>用于比较不同收益率、投资周期和追加投入下的投资结果。</p>
+          </div>
+
+          <div class="card muted-card">
+            <span class="badge pending">即将上线</span>
+            <h2>打工人收入计算器</h2>
+            <p>用于拆解工资、奖金、税费、储蓄率和年度现金流。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">本站内容与工具仅用于学习和估算，不构成投资建议。</div>
+    </footer>
+    <script src="../assets/common.js"></script>
+    <script>setActiveNav("tools")</script>
+  </body>
+</html>
