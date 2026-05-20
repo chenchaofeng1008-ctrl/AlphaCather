@@ -1,14 +1,14 @@
 const performanceSeries = [
-  { date: "2026-01-02", twr: 0.0, nav: 100.0 },
-  { date: "2026-01-15", twr: 1.4, nav: 101.4 },
-  { date: "2026-02-01", twr: 2.8, nav: 102.8 },
-  { date: "2026-02-15", twr: 1.9, nav: 101.9 },
-  { date: "2026-03-01", twr: 4.6, nav: 104.6 },
-  { date: "2026-03-15", twr: 6.2, nav: 106.2 },
-  { date: "2026-04-01", twr: 5.8, nav: 105.8 },
-  { date: "2026-04-15", twr: 8.7, nav: 108.7 },
-  { date: "2026-05-01", twr: 9.5, nav: 109.5 },
-  { date: "2026-05-20", twr: 11.3, nav: 111.3 }
+  { date: "2026-01-02", twr: 0.0 },
+  { date: "2026-01-15", twr: 1.4 },
+  { date: "2026-02-01", twr: 2.8 },
+  { date: "2026-02-15", twr: 1.9 },
+  { date: "2026-03-01", twr: 4.6 },
+  { date: "2026-03-15", twr: 6.2 },
+  { date: "2026-04-01", twr: 5.8 },
+  { date: "2026-04-15", twr: 8.7 },
+  { date: "2026-05-01", twr: 9.5 },
+  { date: "2026-05-20", twr: 11.3 }
 ]
 
 const allocations = {
@@ -67,8 +67,7 @@ function getFilteredSeries() {
 
   return performanceSeries.slice(-count).map((point) => ({
     ...point,
-    twr: round(point.twr + adjustment, 1),
-    nav: round(point.nav + adjustment, 1)
+    twr: round(point.twr + adjustment, 1)
   }))
 }
 
@@ -87,10 +86,8 @@ function renderDashboard() {
   document.querySelector("#metric-total-return").textContent = formatPercent(last.twr)
   document.querySelector("#metric-today-return").textContent = formatPercent(last.twr - previous.twr)
   document.querySelector("#metric-ytd-return").textContent = formatPercent(last.twr - performanceSeries[0].twr)
-  document.querySelector("#metric-nav-index").textContent = last.nav.toFixed(1)
 
   drawLineChart(document.querySelector("#return-chart"), series, "twr", "%", "#176bff")
-  drawLineChart(document.querySelector("#nav-chart"), series, "nav", "", "#0f8f72")
   renderAllocation("#asset-allocation", allocations.asset)
   renderAllocation("#market-allocation", allocations.market)
   renderAllocation("#currency-allocation", allocations.currency)

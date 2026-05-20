@@ -22,7 +22,7 @@
       <section class="hero">
         <p class="eyebrow">投资收益率曲线</p>
         <h1>公开展示投资表现，不暴露账户隐私</h1>
-        <p class="lead">收益率采用时间加权收益率 TWR 作为主口径，页面只展示指数化与比例数据，不展示真实金额、具体持仓和交易明细。</p>
+        <p class="lead">收益率采用时间加权收益率 TWR 作为主口径，页面只展示收益率与比例数据，不展示真实金额、具体持仓和交易明细。</p>
       </section>
 
       <section class="section dashboard-toolbar" aria-label="筛选条件">
@@ -66,13 +66,9 @@
           <span>年初至今 TWR</span>
           <strong id="metric-ytd-return">--</strong>
         </article>
-        <article class="public-metric">
-          <span>净值指数</span>
-          <strong id="metric-nav-index">--</strong>
-        </article>
       </section>
 
-      <section class="section dashboard-grid" aria-label="收益曲线">
+      <section class="section dashboard-grid single-chart-grid" aria-label="收益曲线">
         <article class="dashboard-card chart-card">
           <div class="chart-header">
             <div>
@@ -82,17 +78,6 @@
             <span class="chart-badge">脱敏公开版</span>
           </div>
           <svg class="line-chart" id="return-chart" viewBox="0 0 720 320" role="img" aria-label="TWR 收益率曲线"></svg>
-        </article>
-
-        <article class="dashboard-card chart-card">
-          <div class="chart-header">
-            <div>
-              <h2>账户净值指数</h2>
-              <p>以 100 为起点展示账户表现，不显示真实账户金额。</p>
-            </div>
-            <span class="chart-badge">指数化</span>
-          </div>
-          <svg class="line-chart" id="nav-chart" viewBox="0 0 720 320" role="img" aria-label="账户净值指数曲线"></svg>
         </article>
       </section>
 
@@ -118,7 +103,7 @@
 
       <section class="section dashboard-card privacy-card">
         <h2>数据说明</h2>
-        <p>当前页面为公开展示版。后续接入 uSMART Open API 后，券商 API 密钥只会保存在后端环境变量中；公开接口只返回收益率、净值指数和脱敏比例数据。真实金额、具体持仓、交易流水和账户信息仅可在私密视图中查看。</p>
+        <p>当前页面为公开展示版。后续接入 uSMART Open API 后，券商 API 密钥只会保存在后端环境变量中；公开接口只返回收益率和脱敏比例数据。真实金额、具体持仓、交易流水和账户信息仅可在私密视图中查看。</p>
       </section>
     </main>
 
