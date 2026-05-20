@@ -523,6 +523,38 @@ h1 {
   font-weight: 800;
 }
 
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-legend em {
+  font-style: normal;
+}
+
+.legend-line {
+  display: inline-block;
+  width: 28px;
+  height: 0;
+  border-top: 4px solid #d92d20;
+  border-radius: 999px;
+}
+
+.benchmark-line {
+  border-top: 3px dashed #667085;
+}
+
 .line-chart {
   display: block;
   width: 100%;

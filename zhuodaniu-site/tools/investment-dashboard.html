@@ -50,6 +50,13 @@
               <option value="cny">CNY</option>
             </select>
           </label>
+          <label>
+            比较基准
+            <select id="benchmark-filter">
+              <option value="nasdaq">纳斯达克</option>
+              <option value="sp500">标普指数</option>
+            </select>
+          </label>
         </div>
       </section>
 
@@ -76,6 +83,10 @@
               <p>以统一收益率口径衡量投资表现，降低入金和出金对收益展示的扭曲。</p>
             </div>
             <span class="chart-badge">脱敏公开版</span>
+          </div>
+          <div class="chart-legend">
+            <span><i class="legend-line portfolio-line"></i>收益率</span>
+            <span><i class="legend-line benchmark-line"></i><em id="benchmark-label">纳斯达克</em></span>
           </div>
           <svg class="line-chart" id="return-chart" viewBox="0 0 720 320" role="img" aria-label="收益率曲线"></svg>
         </article>
