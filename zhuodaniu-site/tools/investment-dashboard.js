@@ -59,7 +59,6 @@ function getFilteredSeries() {
   const countByRange = {
     "1M": 3,
     "3M": 6,
-    "6M": 10,
     YTD: 10,
     ALL: performanceSeries.length
   }
