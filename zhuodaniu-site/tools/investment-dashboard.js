@@ -73,7 +73,7 @@ function getFilteredSeries() {
 }
 
 function getFilterAdjustment() {
-  const marketAdjustments = { all: 0, hk: -0.6, us: 0.8, cash: -1.4 }
+  const marketAdjustments = { all: 0, hk: -0.6, us: 0.8 }
   const currencyAdjustments = { all: 0, hkd: -0.2, usd: 0.5, cny: -0.4 }
   return (marketAdjustments[state.market] || 0) + (currencyAdjustments[state.currency] || 0)
 }
