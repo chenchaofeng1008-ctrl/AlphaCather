@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>投资收益率曲线 - AlphaCather</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="主导航">
+        <a class="brand" href="../index.html">捉大牛AlphaCather</a>
+        <div class="nav-links">
+          <a class="nav-link" data-nav="articles" href="../articles/index.html">文章</a>
+          <a class="nav-link" data-nav="videos" href="../videos/index.html">视频</a>
+          <a class="nav-link" data-nav="tools" href="./index.html">工具</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <p class="eyebrow">投资收益率曲线</p>
+        <h1>公开展示投资表现，不暴露账户隐私</h1>
+        <p class="lead">收益率采用时间加权收益率 TWR 作为主口径，页面只展示指数化与比例数据，不展示真实金额、具体持仓和交易明细。</p>
+      </section>
+
+      <section class="section dashboard-toolbar" aria-label="筛选条件">
+        <div class="segmented-control" role="group" aria-label="时间范围">
+          <button class="segment active" type="button" data-range="1M">1月</button>
+          <button class="segment" type="button" data-range="3M">3月</button>
+          <button class="segment" type="button" data-range="6M">6月</button>
+          <button class="segment" type="button" data-range="YTD">今年</button>
+          <button class="segment" type="button" data-range="ALL">全部</button>
+        </div>
+        <div class="filter-row">
+          <label>
+            市场
+            <select id="market-filter">
+              <option value="all">全部市场</option>
+              <option value="hk">港股</option>
+              <option value="us">美股</option>
+              <option value="cash">现金及货币类</option>
+            </select>
+          </label>
+          <label>
+            币种
+            <select id="currency-filter">
+              <option value="all">全部币种</option>
+              <option value="hkd">HKD</option>
+              <option value="usd">USD</option>
+              <option value="cny">CNY</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="section metric-strip" aria-label="公开指标">
+        <article class="public-metric">
+          <span>累计 TWR</span>
+          <strong id="metric-total-return">--</strong>
+        </article>
+        <article class="public-metric">
+          <span>今日 TWR</span>
+          <strong id="metric-today-return">--</strong>
+        </article>
+        <article class="public-metric">
+          <span>年初至今 TWR</span>
+          <strong id="metric-ytd-return">--</strong>
+        </article>
+        <article class="public-metric">
+          <span>净值指数</span>
+          <strong id="metric-nav-index">--</strong>
+        </article>
+      </section>
+
+      <section class="section dashboard-grid" aria-label="收益曲线">
+        <article class="dashboard-card chart-card">
+          <div class="chart-header">
+            <div>
+              <h2>TWR 收益率曲线</h2>
+              <p>以时间加权收益率衡量投资表现，降低入金和出金对收益展示的扭曲。</p>
+            </div>
+            <span class="chart-badge">脱敏公开版</span>
+          </div>
+          <svg class="line-chart" id="return-chart" viewBox="0 0 720 320" role="img" aria-label="TWR 收益率曲线"></svg>
+        </article>
+
+        <article class="dashboard-card chart-card">
+          <div class="chart-header">
+            <div>
+              <h2>账户净值指数</h2>
+              <p>以 100 为起点展示账户表现，不显示真实账户金额。</p>
+            </div>
+            <span class="chart-badge">指数化</span>
+          </div>
+          <svg class="line-chart" id="nav-chart" viewBox="0 0 720 320" role="img" aria-label="账户净值指数曲线"></svg>
+        </article>
+      </section>
+
+      <section class="section dashboard-grid compact-dashboard" aria-label="脱敏分布">
+        <article class="dashboard-card">
+          <h2>资金流入/流出</h2>
+          <p class="dashboard-note">仅展示相对强度，不展示真实金额。</p>
+          <div class="flow-list" id="flow-list"></div>
+        </article>
+
+        <article class="dashboard-card">
+          <h2>资产类别占比</h2>
+          <p class="dashboard-note">不展示具体持仓名称。</p>
+          <div class="allocation-list" id="asset-allocation"></div>
+        </article>
+
+        <article class="dashboard-card">
+          <h2>市场分布</h2>
+          <p class="dashboard-note">按公开可展示的市场维度汇总。</p>
+          <div class="allocation-list" id="market-allocation"></div>
+        </article>
+
+        <article class="dashboard-card">
+          <h2>币种分布</h2>
+          <p class="dashboard-note">按公开可展示的币种维度汇总。</p>
+          <div class="allocation-list" id="currency-allocation"></div>
+        </article>
+      </section>
+
+      <section class="section dashboard-card privacy-card">
+        <h2>数据说明</h2>
+        <p>当前页面为公开展示版。后续接入 uSMART Open API 后，券商 API 密钥只会保存在后端环境变量中；公开接口只返回收益率、净值指数和脱敏比例数据。真实金额、具体持仓、交易流水和账户信息仅可在私密视图中查看。</p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">本站内容与工具仅用于学习和估算，不构成投资建议。</div>
+    </footer>
+    <script src="../assets/common.js"></script>
+    <script src="./investment-dashboard.js"></script>
+    <script>setActiveNav("tools")</script>
+  </body>
+</html>
