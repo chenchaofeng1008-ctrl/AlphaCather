@@ -21,8 +21,8 @@
     <main class="container">
       <section class="hero">
         <p class="eyebrow">投资收益率曲线</p>
-        <h1>公开展示投资表现，不暴露账户隐私</h1>
-        <p class="lead">页面只展示收益率与比例数据，不展示真实金额、具体持仓和交易明细。</p>
+        <h1>公开展示美股账户投资表现</h1>
+        <p class="lead">这个账户整体按美股账户展示，页面只展示收益率与比例数据，不展示真实金额、具体持仓和交易明细。</p>
       </section>
 
       <section class="section dashboard-toolbar" aria-label="筛选条件">
@@ -33,14 +33,6 @@
           <button class="segment" type="button" data-range="ALL">全部</button>
         </div>
         <div class="filter-row">
-          <label>
-            市场
-            <select id="market-filter">
-              <option value="all">全部市场</option>
-              <option value="hk">港股</option>
-              <option value="us">美股</option>
-            </select>
-          </label>
           <label>
             币种
             <select id="currency-filter">
@@ -97,12 +89,6 @@
           <h2>资产类别占比</h2>
           <p class="dashboard-note">不展示具体持仓名称。</p>
           <div class="allocation-list" id="asset-allocation"></div>
-        </article>
-
-        <article class="dashboard-card">
-          <h2>市场分布</h2>
-          <p class="dashboard-note">按公开可展示的市场维度汇总。</p>
-          <div class="allocation-list" id="market-allocation"></div>
         </article>
 
       </section>

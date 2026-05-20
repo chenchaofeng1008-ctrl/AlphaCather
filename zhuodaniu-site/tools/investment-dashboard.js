@@ -16,17 +16,11 @@ const allocations = {
     { label: "股票", value: 62 },
     { label: "现金及货币类", value: 24 },
     { label: "债券/固收", value: 14 }
-  ],
-  market: [
-    { label: "港股", value: 48 },
-    { label: "美股", value: 36 },
-    { label: "其他", value: 16 }
   ]
 }
 
 const state = {
   range: "1M",
-  market: "all",
   currency: "all",
   benchmark: "nasdaq"
 }
@@ -39,11 +33,6 @@ document.querySelectorAll(".segment").forEach((button) => {
     })
     renderDashboard()
   })
-})
-
-document.querySelector("#market-filter").addEventListener("change", (event) => {
-  state.market = event.target.value
-  renderDashboard()
 })
 
 document.querySelector("#currency-filter").addEventListener("change", (event) => {
@@ -74,9 +63,8 @@ function getFilteredSeries() {
 }
 
 function getFilterAdjustment() {
-  const marketAdjustments = { all: 0, hk: -0.6, us: 0.8 }
   const currencyAdjustments = { all: 0, hkd: -0.2, usd: 0.5, cny: -0.4 }
-  return (marketAdjustments[state.market] || 0) + (currencyAdjustments[state.currency] || 0)
+  return currencyAdjustments[state.currency] || 0
 }
 
 function renderDashboard() {
@@ -92,7 +80,6 @@ function renderDashboard() {
   document.querySelector("#benchmark-label").textContent = getBenchmarkLabel(state.benchmark)
   drawComparisonChart(document.querySelector("#return-chart"), series)
   renderAllocation("#asset-allocation", allocations.asset)
-  renderAllocation("#market-allocation", allocations.market)
 }
 
 function drawComparisonChart(svg, series) {
