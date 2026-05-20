@@ -21,11 +21,6 @@ const allocations = {
     { label: "港股", value: 48 },
     { label: "美股", value: 36 },
     { label: "其他", value: 16 }
-  ],
-  currency: [
-    { label: "HKD", value: 45 },
-    { label: "USD", value: 38 },
-    { label: "CNY", value: 17 }
   ]
 }
 
@@ -98,7 +93,6 @@ function renderDashboard() {
   drawComparisonChart(document.querySelector("#return-chart"), series)
   renderAllocation("#asset-allocation", allocations.asset)
   renderAllocation("#market-allocation", allocations.market)
-  renderAllocation("#currency-allocation", allocations.currency)
 }
 
 function drawComparisonChart(svg, series) {
