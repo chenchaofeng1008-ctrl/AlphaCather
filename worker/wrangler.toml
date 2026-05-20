@@ -1,0 +1,11 @@
+name = "alphacather-api"
+main = "src/index.js"
+compatibility_date = "2026-05-20"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "alphacather"
+database_id = "replace-with-cloudflare-d1-database-id"
+
+[triggers]
+crons = ["5 22 * * *"]
