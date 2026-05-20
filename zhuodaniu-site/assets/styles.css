@@ -532,28 +532,12 @@ h1 {
   font-size: 14px;
 }
 
-.flow-list,
 .allocation-list {
   display: grid;
   gap: 14px;
   margin-top: 18px;
 }
 
-.flow-row {
-  display: grid;
-  grid-template-columns: 42px 1fr 44px;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.flow-row strong {
-  color: #344054;
-  text-align: right;
-}
-
-.flow-bar,
 .allocation-bar {
   height: 9px;
   overflow: hidden;
@@ -561,16 +545,11 @@ h1 {
   background: #edf1f5;
 }
 
-.flow-bar i,
 .allocation-bar i {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: var(--primary);
-}
-
-.flow-bar i.outflow {
-  background: #f79009;
 }
 
 .allocation-label {

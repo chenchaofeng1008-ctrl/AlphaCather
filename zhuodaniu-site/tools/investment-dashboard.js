@@ -11,14 +11,6 @@ const performanceSeries = [
   { date: "2026-05-20", twr: 11.3, nav: 111.3 }
 ]
 
-const flows = [
-  { label: "1月", type: "流入", intensity: 72 },
-  { label: "2月", type: "流出", intensity: 28 },
-  { label: "3月", type: "流入", intensity: 46 },
-  { label: "4月", type: "流入", intensity: 64 },
-  { label: "5月", type: "流出", intensity: 22 }
-]
-
 const allocations = {
   asset: [
     { label: "股票", value: 62 },
@@ -100,7 +92,6 @@ function renderDashboard() {
 
   drawLineChart(document.querySelector("#return-chart"), series, "twr", "%", "#176bff")
   drawLineChart(document.querySelector("#nav-chart"), series, "nav", "", "#0f8f72")
-  renderFlows()
   renderAllocation("#asset-allocation", allocations.asset)
   renderAllocation("#market-allocation", allocations.market)
   renderAllocation("#currency-allocation", allocations.currency)
@@ -140,20 +131,6 @@ function drawLineChart(svg, series, key, suffix, color) {
     ${points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="4" fill="${color}"></circle>`).join("")}
     ${xLabels.map((point) => `<text x="${point.x}" y="${height - 16}" fill="#667085" font-size="13" text-anchor="middle">${formatDate(point.date)}</text>`).join("")}
   `
-}
-
-function renderFlows() {
-  const container = document.querySelector("#flow-list")
-  container.innerHTML = flows.map((item) => {
-    const directionClass = item.type === "流入" ? "inflow" : "outflow"
-    return `
-      <div class="flow-row">
-        <span>${item.label}</span>
-        <div class="flow-bar"><i class="${directionClass}" style="width: ${item.intensity}%"></i></div>
-        <strong>${item.type}</strong>
-      </div>
-    `
-  }).join("")
 }
 
 function renderAllocation(selector, items) {
