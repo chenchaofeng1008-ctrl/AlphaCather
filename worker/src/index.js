@@ -263,8 +263,7 @@ async function recalculatePublicPerformance(env) {
     ORDER BY flow_date ASC
   `).bind(ACCOUNT_KEY).all()
 
-  const externalFlowsByDate = groupExternalFlows(flows)
-  const points = calculateTwrPoints(snapshots, externalFlowsByDate)
+  const points = calculateTwrPoints(snapshots, flows)
 
   await env.DB.prepare(`
     DELETE FROM public_performance_points
@@ -401,7 +400,7 @@ async function readLatestAllocations(env) {
   }))
 }
 
-function calculateTwrPoints(snapshots, externalFlowsByDate) {
+function calculateTwrPoints(snapshots, flows) {
   let cumulativeFactor = 1
 
   return snapshots.map((snapshot, index) => {
@@ -412,7 +411,7 @@ function calculateTwrPoints(snapshots, externalFlowsByDate) {
     const previous = snapshots[index - 1]
     const startValue = toNumber(previous.totalAsset)
     const endValue = toNumber(snapshot.totalAsset)
-    const externalFlow = externalFlowsByDate.get(snapshot.date) || 0
+    const externalFlow = sumPeriodExternalFlows(flows, previous.date, snapshot.date)
     const periodReturn = startValue > 0 ? (endValue - externalFlow) / startValue - 1 : 0
     cumulativeFactor *= 1 + periodReturn
 
@@ -423,16 +422,15 @@ function calculateTwrPoints(snapshots, externalFlowsByDate) {
   })
 }
 
-function groupExternalFlows(flows) {
-  const grouped = new Map()
+function sumPeriodExternalFlows(flows, startDate, endDate) {
+  return flows.reduce((total, flow) => {
+    if (flow.date <= startDate || flow.date > endDate) {
+      return total
+    }
 
-  for (const flow of flows) {
     const direction = flow.type === "withdrawal" ? -1 : 1
-    const current = grouped.get(flow.date) || 0
-    grouped.set(flow.date, current + direction * toNumber(flow.amount))
-  }
-
-  return grouped
+    return total + direction * toNumber(flow.amount)
+  }, 0)
 }
 
 function buildMetrics(points) {
