@@ -165,7 +165,7 @@ function findPreferredAccountSection(text) {
 }
 
 async function sendAdminRequest(path, body) {
-  const token = tokenInput.value.trim()
+  const token = getAdminToken()
 
   if (!token) {
     showStatus("请先填写后台密码。", "error")
@@ -178,8 +178,8 @@ async function sendAdminRequest(path, body) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: "POST",
       headers: {
+        authorization: `Bearer ${token}`,
         "content-type": "application/json",
-        "x-admin-token": token
       },
       body: JSON.stringify(body)
     })
@@ -193,6 +193,10 @@ async function sendAdminRequest(path, body) {
   } catch (error) {
     showStatus(error.message, "error")
   }
+}
+
+function getAdminToken() {
+  return tokenInput.value.replace(/[^\x21-\x7e]/g, "")
 }
 
 function findDate(text) {
