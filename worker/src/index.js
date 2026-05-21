@@ -1,4 +1,6 @@
-const mockPerformance = {
+const ACCOUNT_KEY = "us_stock_public"
+
+const fallbackPerformance = {
   account: {
     label: "美股账户",
     visibility: "public_anonymized"
@@ -43,7 +45,7 @@ export default {
     }
 
     if (request.method === "GET" && url.pathname === "/api/public/performance") {
-      return json(mockPerformance)
+      return json(await getPublicPerformance(env))
     }
 
     if (request.method === "GET" && url.pathname === "/api/health") {
@@ -55,6 +57,89 @@ export default {
 
   async scheduled(event, env, ctx) {
     ctx.waitUntil(recordSyncPlaceholder(env))
+  }
+}
+
+async function getPublicPerformance(env) {
+  if (!env.DB) {
+    return fallbackPerformance
+  }
+
+  const points = await readPublicPoints(env)
+  if (points.length === 0) {
+    return fallbackPerformance
+  }
+
+  const allocations = await readLatestAllocations(env)
+
+  return {
+    account: fallbackPerformance.account,
+    metrics: buildMetrics(points),
+    rangeOptions: fallbackPerformance.rangeOptions,
+    benchmarkOptions: fallbackPerformance.benchmarkOptions,
+    points,
+    allocations: {
+      asset: allocations.length > 0 ? allocations : fallbackPerformance.allocations.asset
+    }
+  }
+}
+
+async function readPublicPoints(env) {
+  const { results } = await env.DB.prepare(`
+    SELECT
+      point_date AS date,
+      return_rate AS returnRate,
+      benchmark_nasdaq AS nasdaq,
+      benchmark_sp500 AS sp500
+    FROM public_performance_points
+    WHERE account_key = ?
+    ORDER BY point_date ASC
+  `).bind(ACCOUNT_KEY).all()
+
+  return results.map((point) => ({
+    date: point.date,
+    returnRate: toNumber(point.returnRate),
+    nasdaq: toNumber(point.nasdaq),
+    sp500: toNumber(point.sp500)
+  }))
+}
+
+async function readLatestAllocations(env) {
+  const latest = await env.DB.prepare(`
+    SELECT allocation_date
+    FROM public_allocations
+    WHERE account_key = ? AND allocation_type = ?
+    ORDER BY allocation_date DESC
+    LIMIT 1
+  `).bind(ACCOUNT_KEY, "asset").first()
+
+  if (!latest) {
+    return []
+  }
+
+  const { results } = await env.DB.prepare(`
+    SELECT label, percentage AS value
+    FROM public_allocations
+    WHERE account_key = ? AND allocation_type = ? AND allocation_date = ?
+    ORDER BY percentage DESC
+  `).bind(ACCOUNT_KEY, "asset", latest.allocation_date).all()
+
+  return results.map((item) => ({
+    label: item.label,
+    value: toNumber(item.value)
+  }))
+}
+
+function buildMetrics(points) {
+  const first = points[0]
+  const last = points[points.length - 1]
+  const previous = points[points.length - 2] || first
+  const firstThisYear = points.find((point) => point.date.slice(0, 4) === last.date.slice(0, 4)) || first
+
+  return {
+    todayReturn: round(last.returnRate - previous.returnRate, 1),
+    ytdReturn: round(last.returnRate - firstThisYear.returnRate, 1),
+    totalReturn: round(last.returnRate, 1)
   }
 }
 
@@ -73,7 +158,7 @@ async function recordSyncPlaceholder(env) {
       message
     ) VALUES (?, ?, ?, ?, ?, ?)
   `).bind(
-    "us_stock_public",
+    ACCOUNT_KEY,
     "placeholder",
     new Date().toISOString(),
     new Date().toISOString(),
@@ -98,4 +183,13 @@ function corsHeaders() {
     "access-control-allow-methods": "GET, OPTIONS",
     "access-control-allow-headers": "content-type"
   }
+}
+
+function toNumber(value) {
+  return Number(value ?? 0)
+}
+
+function round(value, digits) {
+  const factor = 10 ** digits
+  return Math.round(value * factor) / factor
 }
