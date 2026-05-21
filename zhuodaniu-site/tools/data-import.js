@@ -93,6 +93,11 @@ async function readPdfText(file, password) {
 
 function parseAssetSnapshot(text) {
   const normalized = normalizeText(text)
+  const multiMarketSnapshot = parseMultiMarketSnapshot(normalized)
+  if (multiMarketSnapshot) {
+    return multiMarketSnapshot
+  }
+
   const accountSection = findPreferredAccountSection(normalized)
   const date = findDate(normalized)
   const currency = findCurrency(accountSection) || findCurrency(normalized)
@@ -138,6 +143,55 @@ function parseAssetSnapshot(text) {
     cash,
     marketValue
   }
+}
+
+function parseMultiMarketSnapshot(text) {
+  if (!/(美股\s*\/\s*USD|USD[^0-9]{0,20}美股)/i.test(text)) {
+    return null
+  }
+
+  const marketIndex = findMarketColumnIndex(text)
+  const totalAsset = findAmountByColumn(text, "期末净资产", marketIndex)
+  const cash = findAmountByColumn(text, "期末账户结余", marketIndex) || 0
+  const marketValue = findAmountByColumn(text, "期末证券市值", marketIndex) || Math.max(totalAsset - cash, 0)
+
+  if (!totalAsset) {
+    return null
+  }
+
+  return {
+    date: findDate(text),
+    currency: "USD",
+    totalAsset,
+    cash,
+    marketValue
+  }
+}
+
+function findMarketColumnIndex(text) {
+  const marketRowMatch = text.match(/市场\/币种(.{0,160})账户类型/)
+  const marketRow = marketRowMatch ? marketRowMatch[1] : text
+  const markets = [...marketRow.matchAll(/(港股|美股|A股通)\s*\/\s*(HKD|USD|CNY|CNH)/gi)]
+
+  if (markets.length > 0) {
+    const index = markets.findIndex((match) => match[1] === "美股" || match[2].toUpperCase() === "USD")
+    return index >= 0 ? index : 1
+  }
+
+  return 1
+}
+
+function findAmountByColumn(text, label, columnIndex) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const pattern = new RegExp(`${escaped}[^\\d\\-]*(--|[\\-]?[\\d,]+(?:\\.\\d+)?)`, "gi")
+  const values = [...text.matchAll(pattern)].map((match) => match[1])
+  const value = values[columnIndex] || values[0]
+
+  if (!value || value === "--") {
+    return null
+  }
+
+  return Number(value.replace(/,/g, ""))
 }
 
 function findPreferredAccountSection(text) {
@@ -224,6 +278,8 @@ function getAdminToken() {
 
 function findDate(text) {
   const patterns = [
+    /(?:结单期间|日期区间|statement period|period)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})\D{1,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
+    /(?:截至日期|期末日期|结单日期|日期|statement date|as of|date)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
     /(?:结单日期|日期|statement date|date)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
     /(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/
   ]
@@ -231,11 +287,22 @@ function findDate(text) {
   for (const pattern of patterns) {
     const match = text.match(pattern)
     if (match) {
-      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`
+      if (match.length >= 7) {
+        return formatDateParts(match[4], match[5], match[6])
+      }
+      return formatDateParts(match[1], match[2], match[3])
     }
   }
 
-  return ""
+  const allDates = [...text.matchAll(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/g)]
+    .map((match) => formatDateParts(match[1], match[2], match[3]))
+    .sort()
+
+  return allDates[allDates.length - 1] || ""
+}
+
+function formatDateParts(year, month, day) {
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
 }
 
 function findCurrency(text) {
