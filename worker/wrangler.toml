@@ -5,7 +5,7 @@ compatibility_date = "2026-05-20"
 [[d1_databases]]
 binding = "DB"
 database_name = "alphacather"
-database_id = "replace-with-cloudflare-d1-database-id"
+database_id = "c5b109a3-2e9c-4f9c-9d58-f58e7a05b947"
 
 [triggers]
 crons = ["5 22 * * *"]
