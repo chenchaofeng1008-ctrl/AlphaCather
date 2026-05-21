@@ -1,4 +1,6 @@
-const performanceSeries = [
+const API_URL = "https://alphacather-api.chenchaofeng1008.workers.dev/api/public/performance"
+
+const fallbackPerformanceSeries = [
   { date: "2026-01-02", twr: 0.0, nasdaq: 0.0, sp500: 0.0 },
   { date: "2026-01-15", twr: 1.4, nasdaq: 0.8, sp500: 0.5 },
   { date: "2026-02-01", twr: 2.8, nasdaq: 2.2, sp500: 1.4 },
@@ -11,13 +13,17 @@ const performanceSeries = [
   { date: "2026-05-20", twr: 11.3, nasdaq: 9.1, sp500: 6.8 }
 ]
 
-const allocations = {
+const fallbackAllocations = {
   asset: [
     { label: "股票", value: 62 },
     { label: "现金及货币类", value: 24 },
     { label: "债券/固收", value: 14 }
   ]
 }
+
+let performanceSeries = fallbackPerformanceSeries
+let allocations = fallbackAllocations
+let dashboardMetrics = null
 
 const state = {
   range: "1M",
@@ -73,9 +79,9 @@ function renderDashboard() {
   const last = series[series.length - 1]
   const previous = series[series.length - 2] || first
 
-  document.querySelector("#metric-total-return").textContent = formatPercent(last.twr)
-  document.querySelector("#metric-today-return").textContent = formatPercent(last.twr - previous.twr)
-  document.querySelector("#metric-ytd-return").textContent = formatPercent(last.twr - performanceSeries[0].twr)
+  document.querySelector("#metric-total-return").textContent = formatPercent(dashboardMetrics?.totalReturn ?? last.twr)
+  document.querySelector("#metric-today-return").textContent = formatPercent(dashboardMetrics?.todayReturn ?? last.twr - previous.twr)
+  document.querySelector("#metric-ytd-return").textContent = formatPercent(dashboardMetrics?.ytdReturn ?? last.twr - performanceSeries[0].twr)
 
   document.querySelector("#benchmark-label").textContent = getBenchmarkLabel(state.benchmark)
   drawComparisonChart(document.querySelector("#return-chart"), series)
@@ -164,4 +170,48 @@ function round(value, digits) {
   return Math.round(value * factor) / factor
 }
 
-renderDashboard()
+async function loadDashboardData() {
+  try {
+    const response = await fetch(API_URL, { headers: { Accept: "application/json" } })
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`)
+    }
+
+    applyApiData(await response.json())
+  } catch (error) {
+    console.warn("使用本地演示数据展示收益率曲线。", error)
+  } finally {
+    renderDashboard()
+  }
+}
+
+function applyApiData(data) {
+  if (Array.isArray(data.points) && data.points.length > 0) {
+    performanceSeries = data.points.map((point) => ({
+      date: point.date,
+      twr: Number(point.returnRate ?? point.twr ?? 0),
+      nasdaq: Number(point.nasdaq ?? 0),
+      sp500: Number(point.sp500 ?? 0)
+    }))
+  }
+
+  if (data.metrics) {
+    dashboardMetrics = {
+      todayReturn: Number(data.metrics.todayReturn ?? 0),
+      ytdReturn: Number(data.metrics.ytdReturn ?? 0),
+      totalReturn: Number(data.metrics.totalReturn ?? 0)
+    }
+  }
+
+  if (data.allocations?.asset?.length) {
+    allocations = {
+      ...allocations,
+      asset: data.allocations.asset.map((item) => ({
+        label: item.label,
+        value: Number(item.value ?? 0)
+      }))
+    }
+  }
+}
+
+loadDashboardData()
