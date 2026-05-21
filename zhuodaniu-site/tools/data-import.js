@@ -279,9 +279,7 @@ function getAdminToken() {
 function findDate(text) {
   const patterns = [
     /(?:结单期间|日期区间|statement period|period)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})\D{1,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
-    /(?:截至日期|期末日期|结单日期|日期|statement date|as of|date)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
-    /(?:结单日期|日期|statement date|date)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
-    /(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/
+    /(?:截至日期|期末日期|结单日期|statement date|as of)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i
   ]
 
   for (const pattern of patterns) {
@@ -325,7 +323,19 @@ function findAmount(text, labels) {
 
 function normalizeText(text) {
   return String(text || "")
+    .replace(/⽇/g, "日")
+    .replace(/⼾/g, "户")
+    .replace(/⾦/g, "金")
+    .replace(/⼊/g, "入")
+    .replace(/⽅/g, "方")
+    .replace(/⽐/g, "比")
+    .replace(/⽉/g, "月")
+    .replace(/⼼/g, "心")
+    .replace(/⾹/g, "香")
+    .replace(/⾏/g, "行")
+    .replace(/⼩/g, "小")
     .replace(/\u00a0/g, " ")
+    .replace(/\s*\/\s*/g, "/")
     .replace(/\s+/g, " ")
     .trim()
 }
