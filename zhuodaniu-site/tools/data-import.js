@@ -8,6 +8,7 @@ const fileInput = document.querySelector("#csv-file")
 const passwordInput = document.querySelector("#pdf-password")
 const csvText = document.querySelector("#csv-text")
 const statusBox = document.querySelector("#import-status")
+let lastPdfImport = null
 
 const templates = {
   asset_snapshots: `date,total_asset,base_currency,cash,market_value
@@ -47,6 +48,10 @@ document.querySelector("#import-button").addEventListener("click", async () => {
   })
 })
 
+document.querySelector("#import-pdf-button").addEventListener("click", async () => {
+  await importLastPdfResult()
+})
+
 document.querySelector("#recalculate-button").addEventListener("click", async () => {
   await sendAdminRequest("/api/admin/recalculate", {})
 })
@@ -64,13 +69,47 @@ async function extractAssetSnapshotFromPdf() {
   try {
     const text = await readPdfText(file, passwordInput.value)
     const snapshot = parseAssetSnapshot(text)
-    csvText.value = `date,total_asset,base_currency,cash,market_value
+    const cashFlows = parseCashFlows(text)
+    const assetCsv = `date,total_asset,base_currency,cash,market_value
 ${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${snapshot.marketValue}`
+    const cashFlowCsv = formatCashFlowsCsv(cashFlows)
+    lastPdfImport = { assetCsv, cashFlowCsv, cashFlowCount: cashFlows.length }
+    csvText.value = cashFlows.length > 0
+      ? `${assetCsv}\n\n# 入金出金识别结果\n${cashFlowCsv}`
+      : assetCsv
     kindInput.value = "asset_snapshots"
-    showStatus("已识别资产快照，请核对左侧识别结果后再导入。", "success")
+    showStatus(`已识别资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金/出金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
   } catch (error) {
     showStatus(error.message, "error")
   }
+}
+
+async function importLastPdfResult() {
+  if (!lastPdfImport) {
+    showStatus("请先读取 PDF 资产快照。", "error")
+    return
+  }
+
+  const assetResult = await sendAdminRequest("/api/admin/import", {
+    kind: "asset_snapshots",
+    csv: lastPdfImport.assetCsv
+  }, { silent: true })
+
+  if (!assetResult) return
+
+  let flowResult = null
+  if (lastPdfImport.cashFlowCsv) {
+    flowResult = await sendAdminRequest("/api/admin/import", {
+      kind: "cash_flows",
+      csv: lastPdfImport.cashFlowCsv
+    }, { silent: true })
+    if (!flowResult) return
+  }
+
+  const recalculateResult = await sendAdminRequest("/api/admin/recalculate", {}, { silent: true })
+  if (!recalculateResult) return
+
+  showStatus(`导入完成：资产快照 ${assetResult.imported} 行，入金/出金 ${flowResult?.imported || 0} 行，已重算 ${recalculateResult.recalculatedPoints} 个收益率点。`, "success")
 }
 
 async function readPdfText(file, password) {
@@ -143,6 +182,46 @@ function parseAssetSnapshot(text) {
     cash,
     marketValue
   }
+}
+
+function parseCashFlows(text) {
+  const normalized = normalizeText(text)
+  const flows = []
+  const flowPattern = /(?:^|\s)(入金|出金)\s+(HKD|USD|CNY|CNH)\s+([\-]?\d[\d,]*(?:\.\d+)?)\s+(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/gi
+  let match
+
+  while ((match = flowPattern.exec(normalized))) {
+    flows.push({
+      date: formatDateParts(match[4], match[5], match[6]),
+      type: match[1] === "出金" ? "withdrawal" : "deposit",
+      amount: Number(match[3].replace(/,/g, "")),
+      currency: match[2].toUpperCase(),
+      description: match[1]
+    })
+  }
+
+  return dedupeCashFlows(flows)
+}
+
+function dedupeCashFlows(flows) {
+  const seen = new Set()
+  return flows.filter((flow) => {
+    const key = `${flow.date}|${flow.type}|${flow.amount}|${flow.currency}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function formatCashFlowsCsv(flows) {
+  if (flows.length === 0) {
+    return ""
+  }
+
+  return [
+    "date,type,amount,currency,description",
+    ...flows.map((flow) => `${flow.date},${flow.type},${Math.abs(flow.amount)},${flow.currency},${flow.description}`)
+  ].join("\n")
 }
 
 function parseMultiMarketSnapshot(text) {
@@ -241,15 +320,17 @@ function findSectionAroundMarket(text, marketName, currency) {
   return text.slice(marker, end)
 }
 
-async function sendAdminRequest(path, body) {
+async function sendAdminRequest(path, body, options = {}) {
   const token = getAdminToken()
 
   if (!token) {
     showStatus("请先填写后台密码。", "error")
-    return
+    return null
   }
 
-  showStatus("处理中...", "")
+  if (!options.silent) {
+    showStatus("处理中...", "")
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -266,9 +347,13 @@ async function sendAdminRequest(path, body) {
       throw new Error(data.error || "请求失败")
     }
 
-    showStatus(formatResult(data), "success")
+    if (!options.silent) {
+      showStatus(formatResult(data), "success")
+    }
+    return data
   } catch (error) {
     showStatus(error.message, "error")
+    return null
   }
 }
 
