@@ -141,6 +141,11 @@ function parseAssetSnapshot(text) {
 }
 
 function findPreferredAccountSection(text) {
+  const directUsSection = findSectionAroundMarket(text, "美股", "USD")
+  if (directUsSection) {
+    return directUsSection
+  }
+
   const sections = []
   const markers = [...text.matchAll(/市场\/币种\s+([^ ]+)\/(HKD|USD|CNY|CNH)/gi)]
 
@@ -162,6 +167,24 @@ function findPreferredAccountSection(text) {
   const hkdSection = sections.find((section) => section.currency === "HKD")
 
   return (usSection || hkdSection || sections[0]).text
+}
+
+function findSectionAroundMarket(text, marketName, currency) {
+  const markerPatterns = [
+    new RegExp(`${marketName}\\s*\\/\\s*${currency}`, "i"),
+    new RegExp(`${marketName}[^\\d]{0,20}${currency}`, "i"),
+    new RegExp(`${currency}[^\\d]{0,20}${marketName}`, "i")
+  ]
+  const marker = markerPatterns.map((pattern) => text.search(pattern)).find((index) => index >= 0)
+
+  if (marker === undefined) {
+    return ""
+  }
+
+  const nextMarket = text.slice(marker + 1).search(/市场\/币种\s+[^ ]+\/(?:HKD|USD|CNY|CNH)/i)
+  const end = nextMarket >= 0 ? marker + 1 + nextMarket : text.length
+
+  return text.slice(marker, end)
 }
 
 async function sendAdminRequest(path, body) {
