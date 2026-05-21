@@ -93,9 +93,11 @@ async function readPdfText(file, password) {
 
 function parseAssetSnapshot(text) {
   const normalized = normalizeText(text)
+  const accountSection = findPreferredAccountSection(normalized)
   const date = findDate(normalized)
-  const currency = findCurrency(normalized)
-  const totalAsset = findAmount(normalized, [
+  const currency = findCurrency(accountSection) || findCurrency(normalized)
+  const totalAsset = findAmount(accountSection, [
+    "期末净资产",
     "总资产",
     "资产总值",
     "账户总值",
@@ -104,14 +106,16 @@ function parseAssetSnapshot(text) {
     "net liquidation value",
     "account value"
   ])
-  const cash = findAmount(normalized, [
+  const cash = findAmount(accountSection, [
+    "期末账户结余",
     "现金",
     "可用现金",
     "现金余额",
     "cash balance",
     "cash"
   ]) || 0
-  const marketValue = findAmount(normalized, [
+  const marketValue = findAmount(accountSection, [
+    "期末证券市值",
     "持仓市值",
     "证券市值",
     "股票市值",
@@ -134,6 +138,30 @@ function parseAssetSnapshot(text) {
     cash,
     marketValue
   }
+}
+
+function findPreferredAccountSection(text) {
+  const sections = []
+  const markers = [...text.matchAll(/市场\/币种\s+([^ ]+)\/(HKD|USD|CNY|CNH)/gi)]
+
+  markers.forEach((marker, index) => {
+    const start = marker.index
+    const end = markers[index + 1]?.index ?? text.length
+    sections.push({
+      market: marker[1],
+      currency: marker[2].toUpperCase(),
+      text: text.slice(start, end)
+    })
+  })
+
+  if (sections.length === 0) {
+    return text
+  }
+
+  const usSection = sections.find((section) => section.currency === "USD" || section.market.includes("美股"))
+  const hkdSection = sections.find((section) => section.currency === "HKD")
+
+  return (usSection || hkdSection || sections[0]).text
 }
 
 async function sendAdminRequest(path, body) {
@@ -185,7 +213,7 @@ function findDate(text) {
 
 function findCurrency(text) {
   const match = text.match(/\b(HKD|USD|CNY|CNH)\b/i)
-  return match ? match[1].toUpperCase() : "HKD"
+  return match ? match[1].toUpperCase() : ""
 }
 
 function findAmount(text, labels) {
