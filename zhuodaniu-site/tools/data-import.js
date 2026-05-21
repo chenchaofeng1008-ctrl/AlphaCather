@@ -1,8 +1,11 @@
+import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.mjs"
+
 const API_BASE_URL = "https://alphacather-api.chenchaofeng1008.workers.dev"
 
 const tokenInput = document.querySelector("#admin-token")
 const kindInput = document.querySelector("#import-kind")
 const fileInput = document.querySelector("#csv-file")
+const passwordInput = document.querySelector("#pdf-password")
 const csvText = document.querySelector("#csv-text")
 const statusBox = document.querySelector("#import-status")
 
@@ -18,16 +21,23 @@ const templates = {
 2026-03-10,withdrawal,10000,HKD,出金`
 }
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs"
+
 kindInput.addEventListener("change", () => {
   if (!csvText.value.trim()) {
     csvText.value = templates[kindInput.value]
   }
 })
 
-fileInput.addEventListener("change", async () => {
+fileInput.addEventListener("change", () => {
   const file = fileInput.files[0]
-  if (!file) return
-  csvText.value = await file.text()
+  if (file) {
+    showStatus(`已选择：${file.name}。点击“读取 PDF 资产快照”开始识别。`, "")
+  }
+})
+
+document.querySelector("#extract-pdf-button").addEventListener("click", async () => {
+  await extractAssetSnapshotFromPdf()
 })
 
 document.querySelector("#import-button").addEventListener("click", async () => {
@@ -40,6 +50,91 @@ document.querySelector("#import-button").addEventListener("click", async () => {
 document.querySelector("#recalculate-button").addEventListener("click", async () => {
   await sendAdminRequest("/api/admin/recalculate", {})
 })
+
+async function extractAssetSnapshotFromPdf() {
+  const file = fileInput.files[0]
+
+  if (!file) {
+    showStatus("请先选择 PDF 结单文件。", "error")
+    return
+  }
+
+  showStatus("正在读取 PDF...", "")
+
+  try {
+    const text = await readPdfText(file, passwordInput.value)
+    const snapshot = parseAssetSnapshot(text)
+    csvText.value = `date,total_asset,base_currency,cash,market_value
+${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${snapshot.marketValue}`
+    kindInput.value = "asset_snapshots"
+    showStatus("已识别资产快照，请核对左侧识别结果后再导入。", "success")
+  } catch (error) {
+    showStatus(error.message, "error")
+  }
+}
+
+async function readPdfText(file, password) {
+  const data = await file.arrayBuffer()
+  const loadingTask = pdfjsLib.getDocument({
+    data,
+    password: password || undefined
+  })
+  const pdf = await loadingTask.promise
+  const pageTexts = []
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber)
+    const content = await page.getTextContent()
+    pageTexts.push(content.items.map((item) => item.str).join(" "))
+  }
+
+  return pageTexts.join("\n")
+}
+
+function parseAssetSnapshot(text) {
+  const normalized = normalizeText(text)
+  const date = findDate(normalized)
+  const currency = findCurrency(normalized)
+  const totalAsset = findAmount(normalized, [
+    "总资产",
+    "资产总值",
+    "账户总值",
+    "账户资产",
+    "total assets",
+    "net liquidation value",
+    "account value"
+  ])
+  const cash = findAmount(normalized, [
+    "现金",
+    "可用现金",
+    "现金余额",
+    "cash balance",
+    "cash"
+  ]) || 0
+  const marketValue = findAmount(normalized, [
+    "持仓市值",
+    "证券市值",
+    "股票市值",
+    "market value",
+    "securities value"
+  ]) || Math.max(totalAsset - cash, 0)
+
+  if (!date) {
+    throw new Error("没有识别到结单日期，请在识别结果里手动填写 date。")
+  }
+
+  if (!totalAsset) {
+    throw new Error("没有识别到总资产，请复制 PDF 里的资产文字，或手动填写 total_asset。")
+  }
+
+  return {
+    date,
+    currency,
+    totalAsset,
+    cash,
+    marketValue
+  }
+}
 
 async function sendAdminRequest(path, body) {
   const token = tokenInput.value.trim()
@@ -70,6 +165,47 @@ async function sendAdminRequest(path, body) {
   } catch (error) {
     showStatus(error.message, "error")
   }
+}
+
+function findDate(text) {
+  const patterns = [
+    /(?:结单日期|日期|statement date|date)\D{0,16}(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/i,
+    /(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match) {
+      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`
+    }
+  }
+
+  return ""
+}
+
+function findCurrency(text) {
+  const match = text.match(/\b(HKD|USD|CNY|CNH)\b/i)
+  return match ? match[1].toUpperCase() : "HKD"
+}
+
+function findAmount(text, labels) {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const pattern = new RegExp(`${escaped}[^\\d\\-]{0,30}([\\-]?[\\d,]+(?:\\.\\d+)?)`, "i")
+    const match = text.match(pattern)
+    if (match) {
+      return Number(match[1].replace(/,/g, ""))
+    }
+  }
+
+  return null
+}
+
+function normalizeText(text) {
+  return String(text || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 function formatResult(data) {
