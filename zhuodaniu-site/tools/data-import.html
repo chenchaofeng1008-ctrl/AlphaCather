@@ -59,6 +59,23 @@
             </div>
           </div>
 
+          <div class="field">
+            <label for="hkd-usd-rate">港币兑美元汇率</label>
+            <div class="input-row">
+              <input id="hkd-usd-rate" type="number" min="0.0001" step="0.0001" value="7.8" inputmode="decimal">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="snapshot-currency">账户总资产币种</label>
+            <div class="input-row">
+              <select id="snapshot-currency">
+                <option value="USD" selected>USD</option>
+                <option value="HKD">HKD</option>
+              </select>
+            </div>
+          </div>
+
           <button class="button secondary-button top-secondary-button" id="extract-pdf-button" type="button">读取 PDF 资产快照</button>
 
           <div class="field">
@@ -107,6 +124,10 @@
               <tr>
                 <th>日期</th>
                 <th>账户总资产</th>
+                <th>美股资产</th>
+                <th>港股资产</th>
+                <th>港股折美元</th>
+                <th>汇率</th>
                 <th>累计入金</th>
                 <th>累计出金</th>
                 <th>净投入本金</th>
@@ -116,7 +137,7 @@
             </thead>
             <tbody id="audit-table-body">
               <tr>
-                <td colspan="7">暂无核对数据。</td>
+                <td colspan="11">暂无核对数据。</td>
               </tr>
             </tbody>
           </table>

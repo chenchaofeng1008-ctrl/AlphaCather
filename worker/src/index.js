@@ -127,6 +127,10 @@ async function importAssetSnapshots(env, rows) {
     const baseCurrency = readText(row, ["base_currency", "currency", "币种", "基础币种"], "HKD").toUpperCase()
     const cashAmount = readOptionalNumber(row, ["cash", "cash_amount", "现金"])
     const marketValue = readOptionalNumber(row, ["market_value", "market_value_amount", "持仓市值", "证券市值"])
+    const hkdToUsdRate = readOptionalNumber(row, ["hkd_to_usd_rate", "港币兑美元汇率", "港币美元汇率"])
+    const hkdNetAsset = readOptionalNumber(row, ["hkd_net_asset", "hkd_net_asset_amount", "港股净资产"])
+    const hkdNetAssetUsd = readOptionalNumber(row, ["hkd_net_asset_usd", "港股折美元"])
+    const usdNetAsset = readOptionalNumber(row, ["usd_net_asset", "usd_net_asset_amount", "美股净资产"])
 
     if (!snapshotDate || totalAsset === null) {
       continue
@@ -139,14 +143,33 @@ async function importAssetSnapshots(env, rows) {
         base_currency,
         total_asset_amount,
         cash_amount,
-        market_value_amount
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        market_value_amount,
+        hkd_to_usd_rate,
+        hkd_net_asset_amount,
+        hkd_net_asset_usd,
+        usd_net_asset_amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(account_key, snapshot_date) DO UPDATE SET
         base_currency = excluded.base_currency,
         total_asset_amount = excluded.total_asset_amount,
         cash_amount = excluded.cash_amount,
-        market_value_amount = excluded.market_value_amount
-    `).bind(ACCOUNT_KEY, snapshotDate, baseCurrency, totalAsset, cashAmount, marketValue).run()
+        market_value_amount = excluded.market_value_amount,
+        hkd_to_usd_rate = excluded.hkd_to_usd_rate,
+        hkd_net_asset_amount = excluded.hkd_net_asset_amount,
+        hkd_net_asset_usd = excluded.hkd_net_asset_usd,
+        usd_net_asset_amount = excluded.usd_net_asset_amount
+    `).bind(
+      ACCOUNT_KEY,
+      snapshotDate,
+      baseCurrency,
+      totalAsset,
+      cashAmount,
+      marketValue,
+      hkdToUsdRate,
+      hkdNetAsset,
+      hkdNetAssetUsd,
+      usdNetAsset
+    ).run()
     imported += 1
   }
 
@@ -250,11 +273,28 @@ async function recalculatePublicPerformance(env) {
   const { results: snapshots } = await env.DB.prepare(`
     SELECT
       snapshot_date AS date,
-      total_asset_amount AS totalAsset,
-      cash_amount AS cashAmount,
-      market_value_amount AS marketValue
-    FROM daily_asset_snapshots
-    WHERE account_key = ? AND UPPER(base_currency) = 'USD'
+      normalized_total_asset AS totalAsset,
+      normalized_cash AS cashAmount,
+      normalized_market_value AS marketValue
+    FROM (
+      SELECT
+        snapshot_date,
+        CASE
+          WHEN UPPER(base_currency) = 'HKD' THEN total_asset_amount / hkd_to_usd_rate
+          ELSE total_asset_amount
+        END AS normalized_total_asset,
+        CASE
+          WHEN UPPER(base_currency) = 'HKD' THEN cash_amount / hkd_to_usd_rate
+          ELSE cash_amount
+        END AS normalized_cash,
+        CASE
+          WHEN UPPER(base_currency) = 'HKD' THEN market_value_amount / hkd_to_usd_rate
+          ELSE market_value_amount
+        END AS normalized_market_value
+      FROM daily_asset_snapshots
+      WHERE account_key = ? AND (UPPER(base_currency) = 'USD' OR hkd_to_usd_rate > 0)
+    )
+    WHERE normalized_total_asset IS NOT NULL
     ORDER BY snapshot_date ASC
   `).bind(ACCOUNT_KEY).all()
 
@@ -308,9 +348,13 @@ async function getPerformanceAudit(env) {
       base_currency AS currency,
       total_asset_amount AS totalAsset,
       cash_amount AS cashAmount,
-      market_value_amount AS marketValue
+      market_value_amount AS marketValue,
+      hkd_to_usd_rate AS hkdToUsdRate,
+      hkd_net_asset_amount AS hkdNetAsset,
+      hkd_net_asset_usd AS hkdNetAssetUsd,
+      usd_net_asset_amount AS usdNetAsset
     FROM daily_asset_snapshots
-    WHERE account_key = ? AND UPPER(base_currency) = 'USD'
+    WHERE account_key = ? AND (UPPER(base_currency) = 'USD' OR hkd_to_usd_rate > 0)
     ORDER BY snapshot_date ASC
   `).bind(ACCOUNT_KEY).all()
 
@@ -322,7 +366,12 @@ async function getPerformanceAudit(env) {
   `).bind(ACCOUNT_KEY).all()
 
   const rows = snapshots.map((snapshot) => {
-    const totalAsset = toNumber(snapshot.totalAsset)
+    const hkdToUsdRate = snapshot.hkdToUsdRate === null ? null : toNumber(snapshot.hkdToUsdRate)
+    const rawCurrency = String(snapshot.currency || "USD").toUpperCase()
+    const rawTotalAsset = toNumber(snapshot.totalAsset)
+    const totalAsset = rawCurrency === "HKD" && hkdToUsdRate
+      ? rawTotalAsset / hkdToUsdRate
+      : rawTotalAsset
     const cumulativeDeposit = sumFlowsByTypeThroughDate(flows, "deposit", snapshot.date)
     const cumulativeWithdrawal = sumFlowsByTypeThroughDate(flows, "withdrawal", snapshot.date)
     const netInvested = cumulativeDeposit - cumulativeWithdrawal
@@ -331,10 +380,16 @@ async function getPerformanceAudit(env) {
 
     return {
       date: snapshot.date,
-      currency: snapshot.currency,
-      totalAsset,
+      currency: "USD",
+      rawCurrency,
+      rawTotalAsset,
+      totalAsset: round(totalAsset, 2),
       cashAmount: toNumber(snapshot.cashAmount),
       marketValue: toNumber(snapshot.marketValue),
+      hkdToUsdRate,
+      hkdNetAsset: snapshot.hkdNetAsset === null ? null : toNumber(snapshot.hkdNetAsset),
+      hkdNetAssetUsd: snapshot.hkdNetAssetUsd === null ? null : toNumber(snapshot.hkdNetAssetUsd),
+      usdNetAsset: snapshot.usdNetAsset === null ? null : toNumber(snapshot.usdNetAsset),
       cumulativeDeposit,
       cumulativeWithdrawal,
       netInvested,

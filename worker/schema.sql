@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS daily_asset_snapshots (
   net_asset_amount REAL,
   cash_amount REAL,
   market_value_amount REAL,
+  hkd_to_usd_rate REAL,
+  hkd_net_asset_amount REAL,
+  hkd_net_asset_usd REAL,
+  usd_net_asset_amount REAL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(account_key, snapshot_date)
 );

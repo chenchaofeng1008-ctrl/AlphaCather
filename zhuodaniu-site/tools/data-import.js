@@ -6,6 +6,8 @@ const tokenInput = document.querySelector("#admin-token")
 const kindInput = document.querySelector("#import-kind")
 const fileInput = document.querySelector("#csv-file")
 const passwordInput = document.querySelector("#pdf-password")
+const hkdUsdRateInput = document.querySelector("#hkd-usd-rate")
+const snapshotCurrencyInput = document.querySelector("#snapshot-currency")
 const csvText = document.querySelector("#csv-text")
 const statusBox = document.querySelector("#import-status")
 const auditSummary = document.querySelector("#audit-summary")
@@ -13,7 +15,7 @@ const auditTableBody = document.querySelector("#audit-table-body")
 let lastPdfImport = null
 
 const templates = {
-  asset_snapshots: "date,total_asset,base_currency,cash,market_value",
+  asset_snapshots: "date,total_asset,base_currency,cash,market_value,hkd_to_usd_rate,hkd_net_asset,hkd_net_asset_usd,usd_net_asset",
   trades: "date,symbol,side,quantity,price,currency,fee",
   cash_flows: "date,type,amount,currency,description"
 }
@@ -242,8 +244,18 @@ function formatCashFlowsCsv(flows) {
 
 function formatAssetSnapshotsCsv(snapshots) {
   return [
-    "date,total_asset,base_currency,cash,market_value",
-    ...snapshots.map((snapshot) => `${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${snapshot.marketValue}`)
+    "date,total_asset,base_currency,cash,market_value,hkd_to_usd_rate,hkd_net_asset,hkd_net_asset_usd,usd_net_asset",
+    ...snapshots.map((snapshot) => [
+      snapshot.date,
+      snapshot.totalAsset,
+      snapshot.currency,
+      snapshot.cash,
+      snapshot.marketValue,
+      snapshot.hkdToUsdRate || "",
+      snapshot.hkdNetAsset ?? "",
+      snapshot.hkdNetAssetUsd ?? "",
+      snapshot.usdNetAsset ?? ""
+    ].join(","))
   ].join("\n")
 }
 
@@ -252,35 +264,52 @@ function parseMultiMarketSnapshot(text) {
     return null
   }
 
-  const marketIndex = findMarketColumnIndex(text)
-  const totalAsset = findAmountByColumn(text, "期末净资产", marketIndex)
-  const cash = findAmountByColumn(text, "期末账户结余", marketIndex) || 0
-  const marketValue = findAmountByColumn(text, "期末证券市值", marketIndex) || Math.max(totalAsset - cash, 0)
+  const hkdToUsdRate = getHkdUsdRate()
+  const targetCurrency = snapshotCurrencyInput.value || "USD"
+  const hkdIndex = findMarketColumnIndex(text, "HKD")
+  const usdIndex = findMarketColumnIndex(text, "USD")
+  const hkdNetAsset = findAmountByColumn(text, "期末净资产", hkdIndex) || 0
+  const usdNetAsset = findAmountByColumn(text, "期末净资产", usdIndex) || 0
+  const hkdCash = findAmountByColumn(text, "期末账户结余", hkdIndex) || 0
+  const usdCash = findAmountByColumn(text, "期末账户结余", usdIndex) || 0
+  const hkdMarketValue = findAmountByColumn(text, "期末证券市值", hkdIndex) || Math.max(hkdNetAsset - hkdCash, 0)
+  const usdMarketValue = findAmountByColumn(text, "期末证券市值", usdIndex) || Math.max(usdNetAsset - usdCash, 0)
+  const hkdNetAssetUsd = hkdNetAsset / hkdToUsdRate
+  const totalAssetUsd = usdNetAsset + hkdNetAssetUsd
+  const cashUsd = usdCash + hkdCash / hkdToUsdRate
+  const marketValueUsd = usdMarketValue + hkdMarketValue / hkdToUsdRate
+  const totalAsset = targetCurrency === "HKD" ? totalAssetUsd * hkdToUsdRate : totalAssetUsd
+  const cash = targetCurrency === "HKD" ? cashUsd * hkdToUsdRate : cashUsd
+  const marketValue = targetCurrency === "HKD" ? marketValueUsd * hkdToUsdRate : marketValueUsd
 
-  if (!totalAsset) {
+  if (!totalAssetUsd) {
     return null
   }
 
   return {
     date: findDate(text),
-    currency: "USD",
-    totalAsset,
-    cash,
-    marketValue
+    currency: targetCurrency,
+    totalAsset: roundMoney(totalAsset),
+    cash: roundMoney(cash),
+    marketValue: roundMoney(marketValue),
+    hkdToUsdRate,
+    hkdNetAsset: roundMoney(hkdNetAsset),
+    hkdNetAssetUsd: roundMoney(hkdNetAssetUsd),
+    usdNetAsset: roundMoney(usdNetAsset)
   }
 }
 
-function findMarketColumnIndex(text) {
+function findMarketColumnIndex(text, preferredCurrency = "USD") {
   const marketRowMatch = text.match(/市场\/币种(.{0,160})账户类型/)
   const marketRow = marketRowMatch ? marketRowMatch[1] : text
   const markets = [...marketRow.matchAll(/(港股|美股|A股通)\s*\/\s*(HKD|USD|CNY|CNH)/gi)]
 
   if (markets.length > 0) {
-    const index = markets.findIndex((match) => match[1] === "美股" || match[2].toUpperCase() === "USD")
+    const index = markets.findIndex((match) => match[2].toUpperCase() === preferredCurrency)
     return index >= 0 ? index : 1
   }
 
-  return 1
+  return preferredCurrency === "HKD" ? 0 : 1
 }
 
 function findAmountByColumn(text, label, columnIndex) {
@@ -408,7 +437,7 @@ async function refreshAuditData(options = {}) {
     return data
   } catch (error) {
     auditSummary.textContent = error.message
-    auditTableBody.innerHTML = `<tr><td colspan="7">读取失败。</td></tr>`
+    auditTableBody.innerHTML = `<tr><td colspan="11">读取失败。</td></tr>`
     if (!options.silent) {
       showStatus(error.message, "error")
     }
@@ -422,7 +451,7 @@ function renderAuditData(data) {
 
   if (rows.length === 0) {
     auditSummary.textContent = "还没有资产快照数据。"
-    auditTableBody.innerHTML = `<tr><td colspan="7">暂无核对数据。</td></tr>`
+    auditTableBody.innerHTML = `<tr><td colspan="11">暂无核对数据。</td></tr>`
     return
   }
 
@@ -434,6 +463,10 @@ function renderAuditData(data) {
     <tr>
       <td>${escapeHtml(row.date)}</td>
       <td>${formatMoney(row.totalAsset, row.currency)}</td>
+      <td>${formatNullableMoney(row.usdNetAsset, "USD")}</td>
+      <td>${formatNullableMoney(row.hkdNetAsset, "HKD")}</td>
+      <td>${formatNullableMoney(row.hkdNetAssetUsd, "USD")}</td>
+      <td>${row.hkdToUsdRate ? row.hkdToUsdRate.toFixed(4) : "--"}</td>
       <td>${formatMoney(row.cumulativeDeposit, row.currency)}</td>
       <td>${formatMoney(row.cumulativeWithdrawal, row.currency)}</td>
       <td>${formatMoney(row.netInvested, row.currency)}</td>
@@ -472,6 +505,15 @@ function findDate(text) {
 
 function formatDateParts(year, month, day) {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+}
+
+function getHkdUsdRate() {
+  const rate = Number(hkdUsdRateInput.value)
+  return Number.isFinite(rate) && rate > 0 ? rate : 7.8
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0) * 100) / 100
 }
 
 function findCurrency(text) {
@@ -528,6 +570,14 @@ function formatMoney(value, currency = "USD") {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`
+}
+
+function formatNullableMoney(value, currency = "USD") {
+  if (value === null || value === undefined || value === "") {
+    return "--"
+  }
+
+  return formatMoney(value, currency)
 }
 
 function formatPercent(value) {
