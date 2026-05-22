@@ -13,6 +13,7 @@ const statusBox = document.querySelector("#import-status")
 const auditSummary = document.querySelector("#audit-summary")
 const auditTableBody = document.querySelector("#audit-table-body")
 let lastPdfImport = null
+let cachedAdminToken = ""
 
 const templates = {
   asset_snapshots: "date,total_asset,base_currency,cash,market_value,hkd_to_usd_rate,hkd_net_asset,hkd_net_asset_usd,usd_net_asset",
@@ -21,6 +22,12 @@ const templates = {
 }
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs"
+
+tokenInput.addEventListener("input", syncAdminToken)
+tokenInput.addEventListener("change", syncAdminToken)
+window.addEventListener("DOMContentLoaded", scheduleAdminTokenSync)
+window.addEventListener("pageshow", scheduleAdminTokenSync)
+scheduleAdminTokenSync()
 
 kindInput.addEventListener("change", () => {
   if (!csvText.value.trim()) {
@@ -373,7 +380,7 @@ function findSectionAroundMarket(text, marketName, currency) {
 }
 
 async function sendAdminRequest(path, body, options = {}) {
-  const token = getAdminToken()
+  const token = await readAdminToken()
 
   if (!token) {
     showStatus("请先填写后台密码。", "error")
@@ -410,7 +417,7 @@ async function sendAdminRequest(path, body, options = {}) {
 }
 
 async function refreshAuditData(options = {}) {
-  const token = getAdminToken()
+  const token = await readAdminToken()
 
   if (!token) {
     showStatus("请先填写后台密码。", "error")
@@ -476,8 +483,37 @@ function renderAuditData(data) {
   `).join("")
 }
 
-function getAdminToken() {
-  return tokenInput.value.replace(/[^\x21-\x7e]/g, "")
+async function readAdminToken() {
+  const token = syncAdminToken()
+  if (token) {
+    return token
+  }
+
+  await waitForAutofill()
+  return syncAdminToken()
+}
+
+function scheduleAdminTokenSync() {
+  syncAdminToken()
+  window.setTimeout(syncAdminToken, 80)
+  window.setTimeout(syncAdminToken, 250)
+}
+
+function syncAdminToken() {
+  cachedAdminToken = normalizeAdminToken(tokenInput.value)
+  return cachedAdminToken
+}
+
+function waitForAutofill() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(resolve, 120)
+    })
+  })
+}
+
+function normalizeAdminToken(value) {
+  return String(value || "").replace(/[^\x21-\x7e]/g, "")
 }
 
 function findDate(text) {
