@@ -31,9 +31,11 @@ kindInput.addEventListener("change", () => {
 })
 
 fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0]
-  if (file) {
-    showStatus(`已选择：${file.name}。点击“读取 PDF 资产快照”开始识别。`, "")
+  const files = [...fileInput.files]
+  if (files.length === 1) {
+    showStatus(`已选择：${files[0].name}。点击“读取 PDF 资产快照”开始识别。`, "")
+  } else if (files.length > 1) {
+    showStatus(`已选择 ${files.length} 个 PDF。点击“读取 PDF 资产快照”开始批量识别。`, "")
   }
 })
 
@@ -57,28 +59,41 @@ document.querySelector("#recalculate-button").addEventListener("click", async ()
 })
 
 async function extractAssetSnapshotFromPdf() {
-  const file = fileInput.files[0]
+  const files = [...fileInput.files]
 
-  if (!file) {
+  if (files.length === 0) {
     showStatus("请先选择 PDF 结单文件。", "error")
     return
   }
 
-  showStatus("正在读取 PDF...", "")
+  showStatus(`正在读取 ${files.length} 个 PDF...`, "")
 
   try {
-    const text = await readPdfText(file, passwordInput.value)
-    const snapshot = parseAssetSnapshot(text)
-    const cashFlows = parseCashFlows(text)
-    const assetCsv = `date,total_asset,base_currency,cash,market_value
-${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${snapshot.marketValue}`
+    const parsedFiles = []
+
+    for (const file of files) {
+      const text = await readPdfText(file, passwordInput.value)
+      parsedFiles.push({
+        fileName: file.name,
+        snapshot: parseAssetSnapshot(text),
+        cashFlows: parseCashFlows(text)
+      })
+    }
+
+    const snapshots = parsedFiles
+      .map((item) => item.snapshot)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    const cashFlows = parsedFiles
+      .flatMap((item) => item.cashFlows)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    const assetCsv = formatAssetSnapshotsCsv(snapshots)
     const cashFlowCsv = formatCashFlowsCsv(cashFlows)
     lastPdfImport = { assetCsv, cashFlowCsv, cashFlowCount: cashFlows.length }
     csvText.value = cashFlows.length > 0
       ? `${assetCsv}\n\n# 入金出金识别结果\n${cashFlowCsv}`
       : assetCsv
     kindInput.value = "asset_snapshots"
-    showStatus(`已识别资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
+    showStatus(`已识别 ${snapshots.length} 条资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
   } catch (error) {
     showStatus(error.message, "error")
   }
@@ -221,6 +236,13 @@ function formatCashFlowsCsv(flows) {
   return [
     "date,type,amount,currency,description",
     ...flows.map((flow) => `${flow.date},${flow.type},${Math.abs(flow.amount)},${flow.currency},${flow.description}`)
+  ].join("\n")
+}
+
+function formatAssetSnapshotsCsv(snapshots) {
+  return [
+    "date,total_asset,base_currency,cash,market_value",
+    ...snapshots.map((snapshot) => `${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${snapshot.marketValue}`)
   ].join("\n")
 }
 
