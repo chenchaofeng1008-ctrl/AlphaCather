@@ -35,17 +35,6 @@
           </div>
 
           <div class="field">
-            <label for="import-kind">数据类型</label>
-            <div class="input-row">
-              <select id="import-kind">
-                <option value="asset_snapshots">资产快照</option>
-                <option value="trades">交易记录</option>
-                <option value="cash_flows">入金出金</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field">
             <label for="csv-file">PDF 结单文件</label>
             <div class="input-row">
               <input id="csv-file" type="file" accept=".pdf,application/pdf" multiple>
@@ -76,15 +65,14 @@
             </div>
           </div>
 
-          <button class="button secondary-button top-secondary-button" id="extract-pdf-button" type="button">读取 PDF 资产快照</button>
+          <button class="button secondary-button top-secondary-button" id="extract-pdf-button" type="button">读取 PDF</button>
 
           <div class="field">
             <label for="csv-text">识别结果</label>
             <textarea id="csv-text" class="csv-textarea" spellcheck="false"></textarea>
           </div>
 
-          <button class="button" id="import-button" type="button">导入数据</button>
-          <button class="button secondary-button" id="import-pdf-button" type="button">导入 PDF 识别结果</button>
+          <button class="button" id="import-pdf-button" type="button">确认导入 PDF 数据</button>
           <button class="button secondary-button" id="recalculate-button" type="button">重算收益率曲线</button>
           <div class="import-status" id="import-status" role="status"></div>
         </article>

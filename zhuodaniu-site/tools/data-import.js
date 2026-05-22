@@ -1,9 +1,9 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.mjs"
 
 const API_BASE_URL = "https://alphacather-api.chenchaofeng1008.workers.dev"
+const ASSET_SNAPSHOT_HEADER = "date,total_asset,base_currency,cash,market_value,hkd_to_usd_rate,hkd_net_asset,hkd_net_asset_usd,usd_net_asset"
 
 const tokenInput = document.querySelector("#admin-token")
-const kindInput = document.querySelector("#import-kind")
 const fileInput = document.querySelector("#csv-file")
 const passwordInput = document.querySelector("#pdf-password")
 const hkdUsdRateInput = document.querySelector("#hkd-usd-rate")
@@ -15,12 +15,6 @@ const auditTableBody = document.querySelector("#audit-table-body")
 let lastPdfImport = null
 let cachedAdminToken = ""
 
-const templates = {
-  asset_snapshots: "date,total_asset,base_currency,cash,market_value,hkd_to_usd_rate,hkd_net_asset,hkd_net_asset_usd,usd_net_asset",
-  trades: "date,symbol,side,quantity,price,currency,fee",
-  cash_flows: "date,type,amount,currency,description"
-}
-
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs"
 
 tokenInput.addEventListener("input", syncAdminToken)
@@ -29,30 +23,17 @@ window.addEventListener("DOMContentLoaded", scheduleAdminTokenSync)
 window.addEventListener("pageshow", scheduleAdminTokenSync)
 scheduleAdminTokenSync()
 
-kindInput.addEventListener("change", () => {
-  if (!csvText.value.trim()) {
-    csvText.value = templates[kindInput.value]
-  }
-})
-
 fileInput.addEventListener("change", () => {
   const files = [...fileInput.files]
   if (files.length === 1) {
-    showStatus(`已选择：${files[0].name}。点击“读取 PDF 资产快照”开始识别。`, "")
+    showStatus(`已选择：${files[0].name}。点击“读取 PDF”开始识别。`, "")
   } else if (files.length > 1) {
-    showStatus(`已选择 ${files.length} 个 PDF。点击“读取 PDF 资产快照”开始批量识别。`, "")
+    showStatus(`已选择 ${files.length} 个 PDF。点击“读取 PDF”开始批量识别。`, "")
   }
 })
 
 document.querySelector("#extract-pdf-button").addEventListener("click", async () => {
   await extractAssetSnapshotFromPdf()
-})
-
-document.querySelector("#import-button").addEventListener("click", async () => {
-  await sendAdminRequest("/api/admin/import", {
-    kind: kindInput.value,
-    csv: csvText.value
-  })
 })
 
 document.querySelector("#import-pdf-button").addEventListener("click", async () => {
@@ -101,8 +82,7 @@ async function extractAssetSnapshotFromPdf() {
     csvText.value = cashFlows.length > 0
       ? `${assetCsv}\n\n# 入金出金识别结果\n${cashFlowCsv}`
       : assetCsv
-    kindInput.value = "asset_snapshots"
-    showStatus(`已识别 ${snapshots.length} 条资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
+    showStatus(`已识别 ${snapshots.length} 条资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金` : ""}。核对后点击“确认导入 PDF 数据”。`, "success")
   } catch (error) {
     showStatus(error.message, "error")
   }
@@ -110,7 +90,7 @@ async function extractAssetSnapshotFromPdf() {
 
 async function importLastPdfResult() {
   if (!lastPdfImport) {
-    showStatus("请先读取 PDF 资产快照。", "error")
+    showStatus("请先读取 PDF。", "error")
     return
   }
 
@@ -636,4 +616,4 @@ function showStatus(message, state) {
   statusBox.className = `import-status ${state}`
 }
 
-csvText.value = templates.asset_snapshots
+csvText.value = ASSET_SNAPSHOT_HEADER
