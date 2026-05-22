@@ -52,20 +52,52 @@ document.querySelector("#benchmark-filter").addEventListener("change", (event) =
 })
 
 function getFilteredSeries() {
-  const countByRange = {
-    "1M": 3,
-    "3M": 6,
-    YTD: 10,
-    ALL: performanceSeries.length
-  }
-  const count = countByRange[state.range] || performanceSeries.length
   const adjustment = getFilterAdjustment()
-
-  return performanceSeries.slice(-count).map((point) => ({
+  const rangedSeries = getSeriesByDateRange(performanceSeries, state.range)
+  const adjustedSeries = rangedSeries.map((point) => ({
     ...point,
     twr: round(point.twr + adjustment, 1),
     benchmark: round(point[state.benchmark], 1)
   }))
+  const first = adjustedSeries[0]
+
+  if (!first) {
+    return []
+  }
+
+  return adjustedSeries.map((point) => ({
+    ...point,
+    twr: round(point.twr - first.twr, 1),
+    benchmark: round(point.benchmark - first.benchmark, 1)
+  }))
+}
+
+function getSeriesByDateRange(series, range) {
+  if (series.length === 0 || range === "ALL") {
+    return series
+  }
+
+  const latestDate = parseDate(series[series.length - 1].date)
+  const startDate = getRangeStartDate(latestDate, range)
+  const filtered = series.filter((point) => parseDate(point.date) >= startDate)
+
+  return filtered.length > 0 ? filtered : series.slice(-1)
+}
+
+function getRangeStartDate(latestDate, range) {
+  if (range === "1M") {
+    return new Date(latestDate.getFullYear(), latestDate.getMonth(), 1)
+  }
+
+  if (range === "3M") {
+    return new Date(latestDate.getFullYear(), latestDate.getMonth() - 3, latestDate.getDate())
+  }
+
+  if (range === "YTD") {
+    return new Date(latestDate.getFullYear(), 0, 1)
+  }
+
+  return new Date(0)
 }
 
 function getFilterAdjustment() {
@@ -75,9 +107,12 @@ function getFilterAdjustment() {
 
 function renderDashboard() {
   const series = getFilteredSeries()
-  const first = series[0]
+  if (series.length === 0) {
+    return
+  }
+
   const last = series[series.length - 1]
-  const previous = series[series.length - 2] || first
+  const previous = series[series.length - 2] || last
 
   document.querySelector("#metric-total-return").textContent = formatPercent(dashboardMetrics?.totalReturn ?? last.twr)
   document.querySelector("#metric-today-return").textContent = formatPercent(dashboardMetrics?.todayReturn ?? last.twr - previous.twr)
@@ -159,6 +194,11 @@ function formatValue(value, suffix) {
 function formatDate(value) {
   const [, month, day] = value.split("-")
   return `${Number(month)}/${Number(day)}`
+}
+
+function parseDate(value) {
+  const [year, month, day] = value.split("-").map(Number)
+  return new Date(year, month - 1, day)
 }
 
 function getBenchmarkLabel(value) {
