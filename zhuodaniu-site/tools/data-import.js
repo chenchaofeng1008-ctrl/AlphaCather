@@ -78,7 +78,7 @@ ${snapshot.date},${snapshot.totalAsset},${snapshot.currency},${snapshot.cash},${
       ? `${assetCsv}\n\n# 入金出金识别结果\n${cashFlowCsv}`
       : assetCsv
     kindInput.value = "asset_snapshots"
-    showStatus(`已识别资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金/出金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
+    showStatus(`已识别资产快照${cashFlows.length ? `，以及 ${cashFlows.length} 条入金` : ""}。核对后点击“导入 PDF 识别结果”。`, "success")
   } catch (error) {
     showStatus(error.message, "error")
   }
@@ -109,7 +109,7 @@ async function importLastPdfResult() {
   const recalculateResult = await sendAdminRequest("/api/admin/recalculate", {}, { silent: true })
   if (!recalculateResult) return
 
-  showStatus(`导入完成：资产快照 ${assetResult.imported} 行，入金/出金 ${flowResult?.imported || 0} 行，已重算 ${recalculateResult.recalculatedPoints} 个收益率点。`, "success")
+  showStatus(`导入完成：资产快照 ${assetResult.imported} 行，入金 ${flowResult?.imported || 0} 行，已重算 ${recalculateResult.recalculatedPoints} 个收益率点。`, "success")
 }
 
 async function readPdfText(file, password) {
@@ -187,13 +187,13 @@ function parseAssetSnapshot(text) {
 function parseCashFlows(text) {
   const normalized = normalizeText(text)
   const flows = []
-  const flowPattern = /(?:^|\s)(入金|出金)\s+(HKD|USD|CNY|CNH)\s+([\-]?\d[\d,]*(?:\.\d+)?)\s+(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/gi
+  const flowPattern = /(?:^|\s)(入金)\s+(HKD|USD|CNY|CNH)\s+([\-]?\d[\d,]*(?:\.\d+)?)\s+(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/gi
   let match
 
   while ((match = flowPattern.exec(normalized))) {
     flows.push({
       date: formatDateParts(match[4], match[5], match[6]),
-      type: match[1] === "出金" ? "withdrawal" : "deposit",
+      type: "deposit",
       amount: Number(match[3].replace(/,/g, "")),
       currency: match[2].toUpperCase(),
       description: match[1]
