@@ -19,9 +19,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs
 
 tokenInput.addEventListener("input", syncAdminToken)
 tokenInput.addEventListener("change", syncAdminToken)
-window.addEventListener("DOMContentLoaded", scheduleAdminTokenSync)
-window.addEventListener("pageshow", scheduleAdminTokenSync)
-scheduleAdminTokenSync()
+window.addEventListener("DOMContentLoaded", clearAdminToken)
+window.addEventListener("pageshow", clearAdminToken)
+clearAdminToken()
 
 fileInput.addEventListener("change", () => {
   const files = [...fileInput.files]
@@ -463,20 +463,8 @@ function renderAuditData(data) {
   `).join("")
 }
 
-async function readAdminToken() {
-  const token = syncAdminToken()
-  if (token) {
-    return token
-  }
-
-  await waitForAutofill()
+function readAdminToken() {
   return syncAdminToken()
-}
-
-function scheduleAdminTokenSync() {
-  syncAdminToken()
-  window.setTimeout(syncAdminToken, 80)
-  window.setTimeout(syncAdminToken, 250)
 }
 
 function syncAdminToken() {
@@ -484,12 +472,9 @@ function syncAdminToken() {
   return cachedAdminToken
 }
 
-function waitForAutofill() {
-  return new Promise((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.setTimeout(resolve, 120)
-    })
-  })
+function clearAdminToken() {
+  tokenInput.value = ""
+  cachedAdminToken = ""
 }
 
 function normalizeAdminToken(value) {
