@@ -1,0 +1,14 @@
+{
+  "name": "alphacather-email-importer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "import:163": "node src/import-163-statements.js"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.191",
+    "mailparser": "^3.7.2",
+    "pdfjs-dist": "^4.10.38"
+  }
+}

@@ -1,1 +1,4 @@
 worker/.wrangler/
+email-importer/.env
+email-importer/.npm-cache/
+email-importer/node_modules/
