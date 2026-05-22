@@ -89,6 +89,39 @@
           </div>
         </aside>
       </section>
+
+      <section class="section audit-section">
+        <div class="section-heading audit-heading">
+          <div>
+            <p class="eyebrow">Private Check</p>
+            <h2>收益率核对数据</h2>
+            <p class="dashboard-note">这里展示每个资产快照日的关键计算数据，只用于你自己检查，不会出现在公开页面。</p>
+          </div>
+          <button class="button secondary-button audit-refresh-button" id="refresh-audit-button" type="button">刷新核对数据</button>
+        </div>
+
+        <div class="audit-summary" id="audit-summary">填写后台密码后，点击刷新核对数据。</div>
+        <div class="audit-table-wrap">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>账户总资产</th>
+                <th>累计入金</th>
+                <th>累计出金</th>
+                <th>净投入本金</th>
+                <th>金额盈亏</th>
+                <th>收益率</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <tr>
+                <td colspan="7">暂无核对数据。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </main>
 
     <footer class="site-footer">

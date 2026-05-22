@@ -8,18 +8,14 @@ const fileInput = document.querySelector("#csv-file")
 const passwordInput = document.querySelector("#pdf-password")
 const csvText = document.querySelector("#csv-text")
 const statusBox = document.querySelector("#import-status")
+const auditSummary = document.querySelector("#audit-summary")
+const auditTableBody = document.querySelector("#audit-table-body")
 let lastPdfImport = null
 
 const templates = {
-  asset_snapshots: `date,total_asset,base_currency,cash,market_value
-2026-01-01,100000,HKD,20000,80000
-2026-02-01,106000,HKD,18000,88000`,
-  trades: `date,symbol,side,quantity,price,currency,fee
-2026-01-10,AAPL,buy,10,180,USD,1
-2026-02-15,AAPL,sell,5,190,USD,1`,
-  cash_flows: `date,type,amount,currency,description
-2026-01-05,deposit,50000,HKD,首次入金
-2026-03-10,withdrawal,10000,HKD,出金`
+  asset_snapshots: "date,total_asset,base_currency,cash,market_value",
+  trades: "date,symbol,side,quantity,price,currency,fee",
+  cash_flows: "date,type,amount,currency,description"
 }
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.mjs"
@@ -56,6 +52,10 @@ document.querySelector("#import-pdf-button").addEventListener("click", async () 
 
 document.querySelector("#recalculate-button").addEventListener("click", async () => {
   await sendAdminRequest("/api/admin/recalculate", {})
+})
+
+document.querySelector("#refresh-audit-button").addEventListener("click", async () => {
+  await refreshAuditData()
 })
 
 async function extractAssetSnapshotFromPdf() {
@@ -124,6 +124,7 @@ async function importLastPdfResult() {
   const recalculateResult = await sendAdminRequest("/api/admin/recalculate", {}, { silent: true })
   if (!recalculateResult) return
 
+  await refreshAuditData({ silent: true })
   showStatus(`导入完成：资产快照 ${assetResult.imported} 行，入金 ${flowResult?.imported || 0} 行，已重算 ${recalculateResult.recalculatedPoints} 个收益率点。`, "success")
 }
 
@@ -379,6 +380,69 @@ async function sendAdminRequest(path, body, options = {}) {
   }
 }
 
+async function refreshAuditData(options = {}) {
+  const token = getAdminToken()
+
+  if (!token) {
+    showStatus("请先填写后台密码。", "error")
+    return null
+  }
+
+  if (!options.silent) {
+    auditSummary.textContent = "正在读取收益率核对数据..."
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admin/performance-audit`, {
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    })
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "读取核对数据失败")
+    }
+
+    renderAuditData(data)
+    return data
+  } catch (error) {
+    auditSummary.textContent = error.message
+    auditTableBody.innerHTML = `<tr><td colspan="7">读取失败。</td></tr>`
+    if (!options.silent) {
+      showStatus(error.message, "error")
+    }
+    return null
+  }
+}
+
+function renderAuditData(data) {
+  const rows = data.snapshots || []
+  const latest = rows[rows.length - 1]
+
+  if (rows.length === 0) {
+    auditSummary.textContent = "还没有资产快照数据。"
+    auditTableBody.innerHTML = `<tr><td colspan="7">暂无核对数据。</td></tr>`
+    return
+  }
+
+  auditSummary.textContent = latest
+    ? `最近快照：${latest.date}，净投入本金 ${formatMoney(latest.netInvested, latest.currency)}，金额盈亏 ${formatMoney(latest.profitAmount, latest.currency)}，收益率 ${formatPercent(latest.returnRate)}。`
+    : "已读取收益率核对数据。"
+
+  auditTableBody.innerHTML = rows.map((row) => `
+    <tr>
+      <td>${escapeHtml(row.date)}</td>
+      <td>${formatMoney(row.totalAsset, row.currency)}</td>
+      <td>${formatMoney(row.cumulativeDeposit, row.currency)}</td>
+      <td>${formatMoney(row.cumulativeWithdrawal, row.currency)}</td>
+      <td>${formatMoney(row.netInvested, row.currency)}</td>
+      <td class="${row.profitAmount >= 0 ? "positive-number" : "negative-number"}">${formatMoney(row.profitAmount, row.currency)}</td>
+      <td class="${row.returnRate >= 0 ? "positive-number" : "negative-number"}">${formatPercent(row.returnRate)}</td>
+    </tr>
+  `).join("")
+}
+
 function getAdminToken() {
   return tokenInput.value.replace(/[^\x21-\x7e]/g, "")
 }
@@ -457,6 +521,28 @@ function formatResult(data) {
   }
 
   return "操作完成。"
+}
+
+function formatMoney(value, currency = "USD") {
+  return `${currency || "USD"} ${Number(value || 0).toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`
+}
+
+function formatPercent(value) {
+  const number = Number(value || 0)
+  const sign = number > 0 ? "+" : ""
+  return `${sign}${number.toFixed(1)}%`
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
 }
 
 function showStatus(message, state) {

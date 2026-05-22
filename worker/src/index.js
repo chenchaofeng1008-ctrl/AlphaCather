@@ -62,6 +62,12 @@ export default {
         return json(await recalculatePublicPerformance(env))
       }
 
+      if (request.method === "GET" && url.pathname === "/api/admin/performance-audit") {
+        const auth = requireAdmin(request, env)
+        if (auth) return auth
+        return json(await getPerformanceAudit(env))
+      }
+
       if (request.method === "GET" && url.pathname === "/api/health") {
         return json({ ok: true })
       }
@@ -248,7 +254,7 @@ async function recalculatePublicPerformance(env) {
       cash_amount AS cashAmount,
       market_value_amount AS marketValue
     FROM daily_asset_snapshots
-    WHERE account_key = ?
+    WHERE account_key = ? AND UPPER(base_currency) = 'USD'
     ORDER BY snapshot_date ASC
   `).bind(ACCOUNT_KEY).all()
 
@@ -259,7 +265,7 @@ async function recalculatePublicPerformance(env) {
   const { results: flows } = await env.DB.prepare(`
     SELECT flow_date AS date, flow_type AS type, amount
     FROM cash_flows
-    WHERE account_key = ?
+    WHERE account_key = ? AND UPPER(currency) = 'USD'
     ORDER BY flow_date ASC
   `).bind(ACCOUNT_KEY).all()
 
@@ -289,6 +295,67 @@ async function recalculatePublicPerformance(env) {
   await rebuildAssetAllocation(env, snapshots[snapshots.length - 1])
 
   return { ok: true, recalculatedPoints: points.length }
+}
+
+async function getPerformanceAudit(env) {
+  if (!env.DB) {
+    throw new ApiError("D1 database is not configured.", 500)
+  }
+
+  const { results: snapshots } = await env.DB.prepare(`
+    SELECT
+      snapshot_date AS date,
+      base_currency AS currency,
+      total_asset_amount AS totalAsset,
+      cash_amount AS cashAmount,
+      market_value_amount AS marketValue
+    FROM daily_asset_snapshots
+    WHERE account_key = ? AND UPPER(base_currency) = 'USD'
+    ORDER BY snapshot_date ASC
+  `).bind(ACCOUNT_KEY).all()
+
+  const { results: flows } = await env.DB.prepare(`
+    SELECT flow_date AS date, flow_type AS type, amount, currency, description
+    FROM cash_flows
+    WHERE account_key = ? AND UPPER(currency) = 'USD'
+    ORDER BY flow_date ASC
+  `).bind(ACCOUNT_KEY).all()
+
+  const rows = snapshots.map((snapshot) => {
+    const totalAsset = toNumber(snapshot.totalAsset)
+    const cumulativeDeposit = sumFlowsByTypeThroughDate(flows, "deposit", snapshot.date)
+    const cumulativeWithdrawal = sumFlowsByTypeThroughDate(flows, "withdrawal", snapshot.date)
+    const netInvested = cumulativeDeposit - cumulativeWithdrawal
+    const profitAmount = netInvested > 0 ? totalAsset - netInvested : 0
+    const returnRate = netInvested > 0 ? (profitAmount / netInvested) * 100 : 0
+
+    return {
+      date: snapshot.date,
+      currency: snapshot.currency,
+      totalAsset,
+      cashAmount: toNumber(snapshot.cashAmount),
+      marketValue: toNumber(snapshot.marketValue),
+      cumulativeDeposit,
+      cumulativeWithdrawal,
+      netInvested,
+      profitAmount: round(profitAmount, 2),
+      returnRate: round(returnRate, 1)
+    }
+  })
+
+  return {
+    ok: true,
+    method: "net_invested_return",
+    formula: "returnRate = (totalAsset - netInvested) / netInvested",
+    snapshots: rows,
+    cashFlows: flows.map((flow) => ({
+      date: flow.date,
+      type: flow.type,
+      amount: toNumber(flow.amount),
+      currency: flow.currency,
+      description: flow.description
+    }))
+  }
 }
 
 async function rebuildAssetAllocation(env, latestSnapshot) {
@@ -425,6 +492,16 @@ function sumExternalFlowsThroughDate(flows, endDate) {
 
     const direction = flow.type === "withdrawal" ? -1 : 1
     return total + direction * toNumber(flow.amount)
+  }, 0)
+}
+
+function sumFlowsByTypeThroughDate(flows, type, endDate) {
+  return flows.reduce((total, flow) => {
+    if (flow.type !== type || flow.date > endDate) {
+      return total
+    }
+
+    return total + toNumber(flow.amount)
   }, 0)
 }
 

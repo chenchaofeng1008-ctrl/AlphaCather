@@ -701,6 +701,77 @@ h1 {
   white-space: nowrap;
 }
 
+.audit-section {
+  margin-top: 22px;
+}
+
+.audit-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.audit-refresh-button {
+  width: auto;
+  min-width: 150px;
+}
+
+.audit-summary {
+  margin: 16px 0 10px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.audit-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d0d5dd;
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.audit-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #eaecf0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.audit-table th:first-child,
+.audit-table td:first-child {
+  text-align: left;
+}
+
+.audit-table th {
+  background: #f8fafc;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.audit-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.positive-number {
+  color: #027a48;
+  font-weight: 800;
+}
+
+.negative-number {
+  color: #d92d20;
+  font-weight: 800;
+}
+
 @media (max-width: 760px) {
   .nav {
     align-items: flex-start;
@@ -736,6 +807,14 @@ h1 {
   .filter-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .audit-heading {
+    flex-direction: column;
+  }
+
+  .audit-refresh-button {
+    width: 100%;
   }
 
   .segmented-control {
