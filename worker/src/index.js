@@ -263,7 +263,7 @@ async function recalculatePublicPerformance(env) {
     ORDER BY flow_date ASC
   `).bind(ACCOUNT_KEY).all()
 
-  const points = calculateTwrPoints(snapshots, flows)
+  const points = calculateNetInvestedReturnPoints(snapshots, flows)
 
   await env.DB.prepare(`
     DELETE FROM public_performance_points
@@ -400,31 +400,26 @@ async function readLatestAllocations(env) {
   }))
 }
 
-function calculateTwrPoints(snapshots, flows) {
-  let cumulativeFactor = 1
+function calculateNetInvestedReturnPoints(snapshots, flows) {
+  const firstSnapshot = snapshots[0]
+  const initialCapital = toNumber(firstSnapshot.totalAsset)
 
-  return snapshots.map((snapshot, index) => {
-    if (index === 0) {
-      return { date: snapshot.date, returnRate: 0 }
-    }
-
-    const previous = snapshots[index - 1]
-    const startValue = toNumber(previous.totalAsset)
+  return snapshots.map((snapshot) => {
     const endValue = toNumber(snapshot.totalAsset)
-    const externalFlow = sumPeriodExternalFlows(flows, previous.date, snapshot.date)
-    const periodReturn = startValue > 0 ? (endValue - externalFlow) / startValue - 1 : 0
-    cumulativeFactor *= 1 + periodReturn
+    const netFlows = sumExternalFlowsThroughDate(flows, snapshot.date)
+    const investedCapital = netFlows > 0 ? netFlows : initialCapital
+    const cumulativeReturn = investedCapital > 0 ? endValue / investedCapital - 1 : 0
 
     return {
       date: snapshot.date,
-      returnRate: round((cumulativeFactor - 1) * 100, 1)
+      returnRate: round(cumulativeReturn * 100, 1)
     }
   })
 }
 
-function sumPeriodExternalFlows(flows, startDate, endDate) {
+function sumExternalFlowsThroughDate(flows, endDate) {
   return flows.reduce((total, flow) => {
-    if (flow.date <= startDate || flow.date > endDate) {
+    if (flow.date > endDate) {
       return total
     }
 
